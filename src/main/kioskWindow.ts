@@ -10,19 +10,22 @@ export interface KioskWindowOptions {
   userAgent: string;
   filter?: RequestFilter;
   kiosk: boolean;
+  /** Do not pin the window above everything, and let Alt+Tab through. */
+  allowSwitching: boolean;
   onNavigate(url: string): void;
   /** Invoked by the emergency exit combination; always ends the session. */
   onEmergencyQuit(): void;
 }
 
 export function createKioskWindow(options: KioskWindowOptions): BrowserWindow {
-  const { settings, userAgent, filter, kiosk } = options;
+  const { settings, userAgent, filter, kiosk, allowSwitching } = options;
 
   const window = new BrowserWindow({
     show: false,
     kiosk,
     fullscreen: kiosk && settings.window.fullscreen,
-    alwaysOnTop: kiosk,
+    alwaysOnTop: kiosk && !allowSwitching,
+    minimizable: true,
     autoHideMenuBar: true,
     backgroundColor: '#1c1f26',
     title: 'Safe Exam Browser for Linux',
@@ -37,13 +40,19 @@ export function createKioskWindow(options: KioskWindowOptions): BrowserWindow {
   });
 
   window.setMenuBarVisibility(false);
-  if (kiosk) {
+  if (kiosk && !allowSwitching) {
     window.setAlwaysOnTop(true, 'screen-saver');
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
 
   window.webContents.setUserAgent(userAgent);
-  installKeyboardLockdown(window, settings.keyboard, options.onEmergencyQuit);
+  const keyboardSettings = allowSwitching
+    ? // Alt+Tab is a window-manager shortcut; intercepting it only makes the
+      // window harder to escape from without making the session more secure.
+      { ...settings.keyboard, enableAltTab: true }
+    : settings.keyboard;
+
+  installKeyboardLockdown(window, keyboardSettings, options.onEmergencyQuit, () => recoverWindow(window));
 
   // Never let the exam session spawn uncontrolled windows or hand URLs to the
   // desktop's default browser.
@@ -147,4 +156,28 @@ async function showLoadFailure(
   } catch (error) {
     logger.error('Could not display the load failure page.', error);
   }
+}
+
+/**
+ * Push the exam window out of the way without ending the session.
+ *
+ * Dropping always-on-top first matters: a window pinned above everything else
+ * can otherwise reclaim the screen the moment it is restored, which is exactly
+ * the situation this is meant to rescue the user from.
+ */
+export function recoverWindow(window: BrowserWindow): void {
+  if (window.isDestroyed()) {
+    return;
+  }
+  logger.warn('Window recovery requested; releasing the screen.');
+  window.setAlwaysOnTop(false);
+  window.setVisibleOnAllWorkspaces(false);
+  if (window.isFullScreen()) {
+    window.setFullScreen(false);
+  }
+  window.setKiosk(false);
+  window.minimize();
+  // Some window managers ignore programmatic minimise. Dropping focus as well
+  // means the desktop is still reachable when that happens.
+  window.blur();
 }

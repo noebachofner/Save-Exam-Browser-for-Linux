@@ -65,6 +65,19 @@ export function shouldBlockInput(input: Input, settings: KeyboardSettings): bool
  */
 export const EMERGENCY_QUIT_ACCELERATOR = 'Control+Shift+Q';
 
+/**
+ * Pushes the exam window out of the way without ending the session. A
+ * fullscreen always-on-top window that a misbehaving window manager will not
+ * let go of otherwise leaves the machine unusable, and killing the session is
+ * too blunt a remedy for a desktop glitch.
+ */
+export const RECOVER_ACCELERATOR = 'Control+Shift+M';
+
+/** True when the input is the window-recovery combination. */
+export function isRecoverWindow(input: Input): boolean {
+  return input.type === 'keyDown' && input.control && input.shift && input.key.toUpperCase() === 'M';
+}
+
 /** True when the input is the emergency exit combination. */
 export function isEmergencyQuit(input: Input): boolean {
   return input.type === 'keyDown' && input.control && input.shift && input.key.toUpperCase() === 'Q';
@@ -74,6 +87,7 @@ export function installKeyboardLockdown(
   window: BrowserWindow,
   settings: KeyboardSettings,
   onEmergencyQuit?: () => void,
+  onRecoverWindow?: () => void,
 ): void {
   window.webContents.on('before-input-event', (event, input) => {
     // Checked before every block rule: a user must never be trapped inside an
@@ -81,6 +95,11 @@ export function installKeyboardLockdown(
     if (onEmergencyQuit && isEmergencyQuit(input)) {
       event.preventDefault();
       onEmergencyQuit();
+      return;
+    }
+    if (onRecoverWindow && isRecoverWindow(input)) {
+      event.preventDefault();
+      onRecoverWindow();
       return;
     }
     if (shouldBlockInput(input, settings)) {

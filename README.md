@@ -115,6 +115,35 @@ bei jedem Start wiederholen.
 Falls das Anmeldefenster nicht zum Ziel führt, funktioniert immer noch der
 manuelle Weg: `.seb`-Datei im Browser herunterladen und den Client damit starten.
 
+### Wegtabben und festhängende Fenster
+
+Unter Linux ist Alt+Tab Sache des Window-Managers, nicht der Anwendung. Was ein
+Wegtabben praktisch verhindert, ist das Always-on-Top-Fenster im Kiosk-Modus —
+und wenn der Window-Manager zickt, kann das den Rechner unbenutzbar machen.
+Dafür gibt es zwei Wege:
+
+**Strg + Shift + M** gibt den Bildschirm frei, ohne die Sitzung zu beenden:
+Always-on-Top wird abgeschaltet, Vollbild und Kiosk verlassen, das Fenster
+minimiert. Immer verfügbar, auch ohne Flags — also auch beim Start über einen
+`seb://`-Link.
+
+**`--allow-switching`** behält den Kiosk-Modus, verzichtet aber von Anfang an auf
+Always-on-Top und lässt Alt+Tab durch:
+
+```bash
+seb-linux config.seb --allow-switching
+```
+
+Dauerhaft, auch für Link-Starts:
+
+```bash
+SEB_LINUX_ALLOW_SWITCHING=1
+```
+
+Beides schwächt die Abschottung, die deine Schule mit SEB durchsetzt. Auf deinem
+eigenen Rechner ist das deine Entscheidung; in einer bewerteten Prüfung solltest
+du wissen, dass du damit von den Prüfungsbedingungen abweichst.
+
 ## Optionen
 
 | Option                | Bedeutung                                                           |
@@ -124,6 +153,7 @@ manuelle Weg: `.seb`-Datei im Browser herunterladen und den Client damit starten
 | `--self-test`         | Fenster öffnen, Start-URL laden, Ergebnis melden, beenden            |
 | `--platform=windows`  | User-Agent-Plattform-Token (Standard: `windows`, alternativ `linux`) |
 | `--no-kiosk`          | Normales Fenster statt Kiosk-Modus (Entwicklung)                     |
+| `--allow-switching`   | Kiosk-Modus ohne Always-on-Top, Alt+Tab funktioniert                 |
 | `--verbose`           | Ausführliches Logging                                                |
 | `-h`, `--help`        | Hilfe                                                                |
 

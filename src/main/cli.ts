@@ -13,6 +13,12 @@ export interface CliOptions {
   selfTest: boolean;
   /** Run in a normal window instead of kiosk mode (for development). */
   noKiosk: boolean;
+  /**
+   * Keep kiosk mode but let the user switch to other windows: no always-on-top,
+   * and Alt+Tab is not intercepted. For desktops where a stuck always-on-top
+   * window cannot be recovered from otherwise.
+   */
+  allowSwitching: boolean;
   /** Platform token presented in the User-Agent header. */
   platform?: UserAgentPlatform;
   /** Verbose logging. */
@@ -32,6 +38,8 @@ Options:
   --self-test             Open the window, load the start URL, report the result, exit
   --platform=<p>          User-Agent platform token: windows (default) or linux
   --no-kiosk              Open a normal window instead of kiosk mode (development)
+  --allow-switching       Keep kiosk mode but allow switching to other windows
+                          (no always-on-top, Alt+Tab passes through)
   --verbose               Verbose logging
   -h, --help              Show this help
 `;
@@ -41,6 +49,7 @@ export function parseArgs(argv: string[]): CliOptions {
     verify: false,
     selfTest: false,
     noKiosk: false,
+    allowSwitching: process.env.SEB_LINUX_ALLOW_SWITCHING === '1',
     verbose: false,
     help: false,
   };
@@ -54,6 +63,8 @@ export function parseArgs(argv: string[]): CliOptions {
       options.selfTest = true;
     } else if (arg === '--no-kiosk') {
       options.noKiosk = true;
+    } else if (arg === '--allow-switching') {
+      options.allowSwitching = true;
     } else if (arg === '--verbose') {
       options.verbose = true;
     } else if (arg === '--platform=windows' || arg === '--platform=linux') {

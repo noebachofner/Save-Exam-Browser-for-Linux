@@ -5,10 +5,10 @@ import { buildUserAgent } from '../core/browser/userAgent';
 import { computeBrowserExamKey } from '../core/crypto/browserExamKey';
 import { parseArgs, usage, userArgs } from './cli';
 import { SebHeaderInjector } from './headers';
-import { createKioskWindow } from './kioskWindow';
+import { createKioskWindow, recoverWindow } from './kioskWindow';
 import { loadConfiguration, type LoadedConfiguration } from './loadConfig';
 import { logger } from './logger';
-import { EMERGENCY_QUIT_ACCELERATOR } from './lockdown';
+import { EMERGENCY_QUIT_ACCELERATOR, RECOVER_ACCELERATOR } from './lockdown';
 import { askForQuitPassword } from './quitPrompt';
 
 const options = parseArgs(userArgs(process.argv, app.isPackaged));
@@ -119,6 +119,7 @@ async function startSession(): Promise<void> {
     userAgent,
     filter,
     kiosk: !options.noKiosk,
+    allowSwitching: options.allowSwitching,
     onNavigate: (url) => injector.setCurrentPageUrl(url),
     onEmergencyQuit: forceQuit,
   });
@@ -277,6 +278,11 @@ app.whenReady().then(async () => {
   // application level too.
   if (!globalShortcut.register(EMERGENCY_QUIT_ACCELERATOR, forceQuit)) {
     logger.warn(`Could not register the emergency exit shortcut (${EMERGENCY_QUIT_ACCELERATOR}).`);
+  }
+  // Same reasoning for window recovery: if the renderer is wedged, the
+  // in-page handler never runs, and that is precisely when it is needed.
+  if (!globalShortcut.register(RECOVER_ACCELERATOR, () => mainWindow && recoverWindow(mainWindow))) {
+    logger.warn(`Could not register the window recovery shortcut (${RECOVER_ACCELERATOR}).`);
   }
   try {
     await startSession();
