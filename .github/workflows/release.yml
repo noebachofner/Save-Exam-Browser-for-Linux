@@ -5,10 +5,15 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# Required to create the release and upload its assets.
+permissions:
+  contents: write
+
 jobs:
-  package:
-    name: Build Linux packages
+  release:
+    name: Build and publish Linux packages
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -17,13 +22,87 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm ci
-      - run: npm run build
-      - run: npx electron-builder --linux AppImage deb --publish never
+      - name: Install dependencies
+        run: npm ci
 
-      - uses: actions/upload-artifact@v4
+      # bsdtar builds the .pacman archive; it is not present on the runner.
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools
+
+      # Never publish a build that would not pass CI.
+      - name: Verify
+        run: npm run check
+
+      - name: Guard against a tag that disagrees with package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          package_version="$(node -p "require('./package.json').version")"
+          if [ "$tag_version" != "$package_version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $package_version." >&2
+            echo "Bump the version, commit, then tag." >&2
+            exit 1
+          fi
+          echo "Releasing version $package_version."
+
+      - name: Build packages
+        run: npx electron-builder --linux AppImage deb pacman --publish never
+
+      # Lets people verify a download that arrived by chat or email.
+      - name: Generate checksums
+        working-directory: release
+        run: sha256sum seb-linux-*.AppImage seb-linux-*.deb seb-linux-*.pacman > SHA256SUMS.txt
+
+      - name: Confirm every expected artifact exists
+        run: |
+          set -e
+          for pattern in 'seb-linux-*.AppImage' 'seb-linux-*.deb' 'seb-linux-*.pacman'; do
+            # shellcheck disable=SC2086
+            count=$(find release -maxdepth 1 -name "$pattern" | wc -l)
+            if [ "$count" -ne 1 ]; then
+              echo "Expected exactly one file matching $pattern, found $count." >&2
+              exit 1
+            fi
+          done
+          ls -lh release/seb-linux-* release/SHA256SUMS.txt
+
+      # A tagless manual run still produces downloadable builds, without
+      # pretending to be a release.
+      - name: Upload build artifacts
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: actions/upload-artifact@v4
         with:
           name: seb-linux-packages
           path: |
-            release/*.AppImage
-            release/*.deb
+            release/seb-linux-*.AppImage
+            release/seb-linux-*.deb
+            release/seb-linux-*.pacman
+            release/SHA256SUMS.txt
+            INSTALL.md
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            Unofficial Safe Exam Browser client for Linux.
+
+            | Distribution | Datei |
+            | --- | --- |
+            | Ubuntu, Zorin OS, Debian | `seb-linux-*-amd64.deb` |
+            | CachyOS, Arch, Manjaro | `seb-linux-*-x64.pacman` |
+            | Alles andere | `seb-linux-*-x86_64.AppImage` |
+
+            Installationsanleitung: **INSTALL.md** (unten angehängt).
+
+            Prüfsummen: `sha256sum -c SHA256SUMS.txt`
+          files: |
+            release/seb-linux-*.AppImage
+            release/seb-linux-*.deb
+            release/seb-linux-*.pacman
+            release/SHA256SUMS.txt
+            INSTALL.md
