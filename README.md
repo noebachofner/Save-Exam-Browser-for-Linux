@@ -104,6 +104,17 @@ Prüfen, welche Version läuft:
 dpkg -l seb-linux | tail -1
 ```
 
+### Konfiguration hinter einem Login
+
+Manche Moodle-Instanzen (z. B. mit aktivem `forcelogin`) leiten den
+Konfigurations-Endpunkt auf die Anmeldeseite um. Der Client öffnet dann ein
+Anmeldefenster; nach dem Login lädt er die Konfiguration mit deiner Session und
+startet die Prüfung. Die Anmeldung bleibt gespeichert, du musst sie also nicht
+bei jedem Start wiederholen.
+
+Falls das Anmeldefenster nicht zum Ziel führt, funktioniert immer noch der
+manuelle Weg: `.seb`-Datei im Browser herunterladen und den Client damit starten.
+
 ## Optionen
 
 | Option                | Bedeutung                                                           |

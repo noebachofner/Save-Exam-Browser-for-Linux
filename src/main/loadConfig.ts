@@ -1,13 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { AppSettings, defaultSettings, mapSettings } from '../core/config/appSettings';
 import { parseSebConfig, PasswordRequiredError, type SebConfig } from '../core/config/sebConfig';
-import {
-  downloadSebConfig,
-  isSebLink,
-  resolveSebUrl,
-  resolveSebUrlInsecureFallback,
-  SebUrlError,
-} from '../core/net/sebUrl';
+import { isSebLink, resolveSebUrl, resolveSebUrlInsecureFallback, SebUrlError } from '../core/net/sebUrl';
+import { downloadWithSignIn } from './configDownload';
 import { logger } from './logger';
 
 export interface LoadedConfiguration {
@@ -24,7 +19,7 @@ async function fetchConfig(link: string): Promise<Buffer> {
   const primary = resolveSebUrl(link);
   try {
     logger.info(`Downloading configuration from ${primary}`);
-    return await downloadSebConfig(primary, BOOTSTRAP_USER_AGENT);
+    return await downloadWithSignIn(primary, BOOTSTRAP_USER_AGENT);
   } catch (error) {
     // Only retry over plain HTTP when HTTPS was not reachable at all. If the
     // server answered — an HTTP error status, or a login page — retrying over
@@ -37,7 +32,7 @@ async function fetchConfig(link: string): Promise<Buffer> {
       throw error;
     }
     logger.warn(`HTTPS download failed, retrying over plain HTTP: ${fallback}`);
-    return downloadSebConfig(fallback, BOOTSTRAP_USER_AGENT);
+    return downloadWithSignIn(fallback, BOOTSTRAP_USER_AGENT);
   }
 }
 
