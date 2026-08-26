@@ -224,12 +224,29 @@ app.whenReady().then(async () => {
     logger.error('Failed to start the exam session.', error);
     if (!options.verify) {
       const fallback = new BrowserWindow({
-        width: 720,
-        height: 420,
+        width: 760,
+        height: 520,
         title: 'Safe Exam Browser for Linux',
         webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
       });
+      // Surface the real reason on the page: without it the screen looks like
+      // "no configuration given" even when the actual failure was a download
+      // error, an unreadable file, or an unreachable start URL.
+      const reason = error instanceof Error ? error.message : String(error);
       await fallback.loadFile(join(__dirname, '..', 'renderer', 'error.html'));
+      // The page keeps a strict `default-src 'none'` CSP, which blocks inline
+      // scripts, so fill in the details from the main process instead. Values
+      // are JSON-encoded and assigned via textContent, never parsed as markup.
+      await fallback.webContents.executeJavaScript(
+        `(() => {
+           const set = (id, text) => {
+             const el = document.getElementById(id);
+             if (el && text) { el.textContent = text; el.hidden = false; }
+           };
+           set('reason', ${JSON.stringify(reason)});
+           set('source', ${JSON.stringify(options.source ? `Configuration: ${options.source}` : '')});
+         })();`,
+      );
     } else {
       app.exit(1);
     }
