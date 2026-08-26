@@ -47,6 +47,12 @@ jobs:
           fi
           echo "Releasing version $package_version."
 
+      # Compiles TypeScript into dist/ and copies the renderer assets.
+      # electron-builder packages dist/ but does not produce it, and a fresh
+      # runner has no dist/ lying around from an earlier build.
+      - name: Compile
+        run: npm run build
+
       - name: Build packages
         run: npx electron-builder --linux AppImage deb pacman --publish never
 

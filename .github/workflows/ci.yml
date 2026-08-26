@@ -56,3 +56,40 @@ jobs:
 
       - name: Smoke test (starts the real app under Xvfb)
         run: npm run smoke
+
+  package:
+    name: Package from a clean checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # bsdtar builds the .pacman archive.
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools
+
+      # Catches packaging breaking on a machine with no dist/ left over from an
+      # earlier build, which is exactly how a release once failed.
+      - name: Build all Linux packages
+        run: npm run dist
+
+      - name: Confirm every expected artifact exists
+        run: |
+          set -e
+          for pattern in 'seb-linux-*.AppImage' 'seb-linux-*.deb' 'seb-linux-*.pacman'; do
+            count=$(find release -maxdepth 1 -name "$pattern" | wc -l)
+            if [ "$count" -ne 1 ]; then
+              echo "Expected exactly one file matching $pattern, found $count." >&2
+              exit 1
+            fi
+          done
+          ls -lh release/seb-linux-*
