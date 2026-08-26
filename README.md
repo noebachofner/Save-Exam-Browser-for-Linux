@@ -83,6 +83,27 @@ npm run dist:appimage
 ./release/*.AppImage exam.seb
 ```
 
+## Aktualisieren
+
+Nach einem `git pull` die installierte App neu bauen und ersetzen:
+
+```bash
+pkill -f seb-linux                          # laufende Sitzung beenden
+git pull
+npm install                                 # nur nötig, wenn sich Abhängigkeiten geändert haben
+npm run dist:deb
+sudo dpkg -i ./release/seb-linux_*.deb
+```
+
+`dpkg -i` installiert auch dann, wenn dieselbe Version schon installiert ist —
+`apt install` würde bei gleicher Versionsnummer kommentarlos nichts tun.
+
+Prüfen, welche Version läuft:
+
+```bash
+dpkg -l seb-linux | tail -1
+```
+
 ## Optionen
 
 | Option                | Bedeutung                                                           |
