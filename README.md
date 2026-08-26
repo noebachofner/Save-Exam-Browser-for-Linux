@@ -201,3 +201,36 @@ du damit in eine bewertete Prüfung gehst.
 
 MIT-Lizenz, siehe [`LICENSE`](LICENSE). Nicht mit dem SEB-Projekt oder der ETH Zürich
 verbunden. „Safe Exam Browser" ist ein Projekt der ETH Zürich.
+
+## Beenden und Übungsmodus
+
+### Immer rauskommen: Strg + Shift + Q
+
+Diese Kombination beendet die Sitzung **immer** — auch im Kiosk-Modus und auch
+wenn die Konfiguration ein Quit-Passwort setzt, das du nicht kennst. In einer
+Anwendung festzustecken, die deinen Bildschirm übernommen hat, ist ein
+Sicherheitsproblem; deshalb ist dieser Ausstieg bewusst nicht abschaltbar.
+
+Beenden heisst: die Prüfungssitzung endet sichtbar. Es verschafft dir keinen
+verdeckten Vorteil — Moodle sieht, dass du die Sitzung verlassen hast.
+
+Falls die App gar nicht mehr reagiert:
+
+```bash
+pkill -f seb-linux
+```
+
+### Übungsmodus: `--no-kiosk`
+
+```bash
+seb-linux config.seb --no-kiosk
+```
+
+Normales Fenster statt Vollbild, Alt-Tab funktioniert, Schliessen jederzeit
+möglich. Gedacht zum Einrichten und Ausprobieren.
+
+**Das ist keine gültige Prüfungssitzung.** Der Kiosk-Modus ist genau die
+Kontrolle, die deine Schule mit SEB durchsetzt. Wenn du eine bewertete Prüfung
+schreibst, starte ohne `--no-kiosk`; andernfalls verstösst du gegen die
+Prüfungsbedingungen deiner Schule.
+

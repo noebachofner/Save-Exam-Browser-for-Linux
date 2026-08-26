@@ -59,8 +59,30 @@ export function shouldBlockInput(input: Input, settings: KeyboardSettings): bool
   return false;
 }
 
-export function installKeyboardLockdown(window: BrowserWindow, settings: KeyboardSettings): void {
+/**
+ * The emergency exit combination. Deliberately awkward to hit by accident, and
+ * never blocked by the lockdown rules above.
+ */
+export const EMERGENCY_QUIT_ACCELERATOR = 'Control+Shift+Q';
+
+/** True when the input is the emergency exit combination. */
+export function isEmergencyQuit(input: Input): boolean {
+  return input.type === 'keyDown' && input.control && input.shift && input.key.toUpperCase() === 'Q';
+}
+
+export function installKeyboardLockdown(
+  window: BrowserWindow,
+  settings: KeyboardSettings,
+  onEmergencyQuit?: () => void,
+): void {
   window.webContents.on('before-input-event', (event, input) => {
+    // Checked before every block rule: a user must never be trapped inside an
+    // application running on their own machine.
+    if (onEmergencyQuit && isEmergencyQuit(input)) {
+      event.preventDefault();
+      onEmergencyQuit();
+      return;
+    }
     if (shouldBlockInput(input, settings)) {
       event.preventDefault();
     }

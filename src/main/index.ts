@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, session } from 'electron';
 import { join } from 'node:path';
 import { RequestFilter } from '../core/browser/urlFilter';
 import { buildUserAgent } from '../core/browser/userAgent';
@@ -8,6 +8,7 @@ import { SebHeaderInjector } from './headers';
 import { createKioskWindow } from './kioskWindow';
 import { loadConfiguration, type LoadedConfiguration } from './loadConfig';
 import { logger } from './logger';
+import { EMERGENCY_QUIT_ACCELERATOR } from './lockdown';
 import { askForQuitPassword } from './quitPrompt';
 
 const options = parseArgs(userArgs(process.argv, app.isPackaged));
@@ -23,8 +24,17 @@ if (options.help) {
 
 // A single instance only: a second launch must not create an escape hatch out of
 // a running exam session.
-if (!app.requestSingleInstanceLock()) {
+if (!options.help && !app.requestSingleInstanceLock()) {
   logger.error('Another instance is already running.');
+  // Exiting silently here looks exactly like the client failing to launch: the
+  // user clicks, nothing happens, and there is no window to explain why. Say so
+  // on screen before quitting. showErrorBox works before the app is ready.
+  dialog.showErrorBox(
+    'Safe Exam Browser is already running',
+    'Another instance of Safe Exam Browser for Linux is already running, so this one will close.\n\n' +
+      'If no window is visible, a previous session is still active in the background. ' +
+      'End it with:\n\n    pkill -f seb-linux\n\nthen start the client again.',
+  );
   app.exit(1);
 }
 
@@ -103,6 +113,7 @@ async function startSession(): Promise<void> {
     filter,
     kiosk: !options.noKiosk,
     onNavigate: (url) => injector.setCurrentPageUrl(url),
+    onEmergencyQuit: forceQuit,
   });
 
   mainWindow.on('close', (event) => {
@@ -115,7 +126,15 @@ async function startSession(): Promise<void> {
 
   injector.setCurrentPageUrl(settings.startUrl);
   logger.info(`Loading start URL: ${settings.startUrl}`);
-  await mainWindow.loadURL(settings.startUrl);
+  try {
+    await mainWindow.loadURL(settings.startUrl);
+  } catch (error) {
+    // A start URL that fails to load is not a reason to tear down the session:
+    // the window is already open and its `did-fail-load` handler shows the
+    // reason in place. Throwing here would race that handler and stack a second
+    // error window on top of it.
+    logger.warn(`Start URL did not load: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   if (options.selfTest) {
     await runSelfTest(mainWindow, userAgent);
@@ -177,6 +196,18 @@ function waitUntilVisible(window: BrowserWindow, timeoutMs: number): Promise<voi
   });
 }
 
+/**
+ * Unconditional exit. Bypasses the configuration's quit password on purpose:
+ * being unable to leave an application that has taken over the screen is a
+ * safety problem, and quitting ends the exam session openly rather than
+ * granting any hidden advantage.
+ */
+function forceQuit(): void {
+  logger.warn('Emergency exit requested; ending the session.');
+  allowClose = true;
+  app.quit();
+}
+
 async function requestQuit(): Promise<void> {
   if (!mainWindow || !configuration) {
     return;
@@ -201,11 +232,24 @@ async function requestQuit(): Promise<void> {
 }
 
 app.on('second-instance', () => {
-  mainWindow?.focus();
+  // Surface whichever window this instance has, so a second launch never looks
+  // like a no-op. The exam window takes precedence when one exists.
+  const target = mainWindow ?? BrowserWindow.getAllWindows()[0];
+  if (target) {
+    if (target.isMinimized()) {
+      target.restore();
+    }
+    target.show();
+    target.focus();
+  }
 });
 
 app.on('window-all-closed', () => {
   app.quit();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 // Deny every permission request unless the configuration opts in.
@@ -218,6 +262,12 @@ function hardenSession(): void {
 
 app.whenReady().then(async () => {
   hardenSession();
+  // Backstop for the emergency exit: `before-input-event` only fires while the
+  // renderer is responsive and focused, so register the same combination at the
+  // application level too.
+  if (!globalShortcut.register(EMERGENCY_QUIT_ACCELERATOR, forceQuit)) {
+    logger.warn(`Could not register the emergency exit shortcut (${EMERGENCY_QUIT_ACCELERATOR}).`);
+  }
   try {
     await startSession();
   } catch (error) {
