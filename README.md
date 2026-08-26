@@ -242,6 +242,21 @@ Kurzfassung:
 - Keine Public-Key-verschlüsselten `.seb`-Dateien (dafür bräuchte es das Zertifikat der
   Institution)
 
+## Release veröffentlichen
+
+Ein Tag `v<version>` baut alle drei Pakete und legt automatisch ein GitHub
+Release an, das jeder herunterladen kann — samt `INSTALL.md` und Prüfsummen.
+
+```bash
+npm version patch          # oder minor / major; setzt package.json und taggt
+git push --follow-tags
+```
+
+Der Workflow bricht ab, wenn der Tag nicht zur Version in `package.json` passt,
+und veröffentlicht nichts, was `npm run check` nicht besteht. Ein manueller Lauf
+über *Actions → Release → Run workflow* baut die Pakete ebenfalls, hängt sie aber
+nur als Workflow-Artefakte an, ohne ein Release anzulegen.
+
 ## Entwicklung
 
 ```bash
