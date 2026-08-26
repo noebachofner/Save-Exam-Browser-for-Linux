@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "description": "An unofficial, independent Safe Exam Browser client for Linux (Ubuntu/ZorinOS and derivatives).",
   "license": "MIT",
-  "author": "Noé Bachofner",
+  "author": {
+    "name": "No\u00e9 Bachofner",
+    "email": "noebachofner@lxrin.ch"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/noebachofner/Save-Exam-Browser-for-Linux.git"
@@ -62,11 +65,13 @@
         "deb"
       ],
       "desktop": {
-        "entry": {
-          "Name": "Safe Exam Browser for Linux",
-          "MimeType": "application/x-seb;x-scheme-handler/seb;x-scheme-handler/sebs"
-        }
-      }
+        "Name": "Safe Exam Browser for Linux",
+        "MimeType": "x-scheme-handler/seb;x-scheme-handler/sebs;application/x-seb;",
+        "Categories": "Education;",
+        "Keywords": "exam;seb;safeexambrowser;"
+      },
+      "maintainer": "No\u00e9 Bachofner <noebachofner@lxrin.ch>",
+      "synopsis": "Unofficial SEB-compatible exam browser for Linux"
     }
   }
 }

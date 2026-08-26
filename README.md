@@ -47,11 +47,40 @@ Headers    : enabled
 URL filter : 3 rule(s)
 ```
 
-### Installierbare Pakete bauen
+## Installieren und per seb://-Link starten
+
+So musst du nichts mehr eintippen — Link in Moodle anklicken, Prüfung startet.
 
 ```bash
-npm run dist:appimage   # → release/*.AppImage
-npm run dist:deb        # → release/*.deb
+npm run dist:deb                            # → release/seb-linux_0.1.0_amd64.deb
+sudo apt install ./release/seb-linux_*.deb  # installiert nach /opt und registriert den Handler
+```
+
+Danach einmalig als Standard-Handler setzen (auf manchen Desktops passiert das schon
+automatisch):
+
+```bash
+update-desktop-database ~/.local/share/applications 2>/dev/null
+xdg-mime default seb-linux.desktop x-scheme-handler/seb
+xdg-mime default seb-linux.desktop x-scheme-handler/sebs
+xdg-mime default seb-linux.desktop application/x-seb
+```
+
+Prüfen, ob es sitzt:
+
+```bash
+xdg-mime query default x-scheme-handler/seb   # → seb-linux.desktop
+xdg-open "seb://moodle.example.edu/exam.seb"  # muss die App starten
+```
+
+Ab jetzt startet ein Klick auf einen `seb://`-Link im Browser direkt die Prüfung, und
+ein Doppelklick auf eine `.seb`-Datei ebenfalls.
+
+Alternativ als AppImage (ohne Installation, dann aber auch ohne Link-Handler):
+
+```bash
+npm run dist:appimage
+./release/*.AppImage exam.seb
 ```
 
 ## Optionen
