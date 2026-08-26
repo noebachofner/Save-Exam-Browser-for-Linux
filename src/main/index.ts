@@ -5,6 +5,7 @@ import { buildUserAgent } from '../core/browser/userAgent';
 import { computeBrowserExamKey } from '../core/crypto/browserExamKey';
 import { parseArgs, usage, userArgs } from './cli';
 import { SebHeaderInjector } from './headers';
+import { installDesktopEntry, uninstallDesktopEntry } from './desktopIntegration';
 import { createKioskWindow, recoverWindow } from './kioskWindow';
 import { loadConfiguration, type LoadedConfiguration } from './loadConfig';
 import { logger } from './logger';
@@ -22,9 +23,38 @@ if (options.help) {
   app.exit(0);
 }
 
+/*
+ * Window backend. Under a Wayland session Chromium defaults to XWayland, which
+ * is deliberately kept: Wayland compositors generally do not let a client pin
+ * itself above everything else, so native Wayland weakens the very lockdown the
+ * kiosk mode is for. `--wayland` opts into it for people who need it (HiDPI
+ * scaling, fractional scaling, input methods).
+ */
+if (options.wayland) {
+  app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+  app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations');
+}
+
+if (options.install || options.uninstall) {
+  void app.whenReady().then(async () => {
+    try {
+      const path = options.install ? await installDesktopEntry() : await uninstallDesktopEntry();
+      console.log(`${options.install ? 'Installed' : 'Removed'}: ${path}`);
+      if (options.install) {
+        console.log('Clicking a seb:// link or a .seb file now starts this client.');
+      }
+      app.exit(0);
+    } catch (error) {
+      console.error(`Failed: ${error instanceof Error ? error.message : String(error)}`);
+      app.exit(1);
+    }
+  });
+}
+
 // A single instance only: a second launch must not create an escape hatch out of
 // a running exam session.
-if (!options.help && !app.requestSingleInstanceLock()) {
+const managementCommand = options.help || options.install || options.uninstall;
+if (!managementCommand && !app.requestSingleInstanceLock()) {
   logger.error('Another instance is already running.');
   // Exiting silently here looks exactly like the client failing to launch: the
   // user clicks, nothing happens, and there is no window to explain why. Say so
@@ -272,6 +302,9 @@ function hardenSession(): void {
 }
 
 app.whenReady().then(async () => {
+  if (options.install || options.uninstall) {
+    return;
+  }
   hardenSession();
   // Backstop for the emergency exit: `before-input-event` only fires while the
   // renderer is responsive and focused, so register the same combination at the

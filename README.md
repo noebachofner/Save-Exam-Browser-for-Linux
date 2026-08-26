@@ -47,7 +47,18 @@ Headers    : enabled
 URL filter : 3 rule(s)
 ```
 
-## Installieren und per seb://-Link starten
+## Installation
+
+Fertige Pakete für Ubuntu/Zorin (`.deb`), CachyOS/Arch (`.pacman`) und alles
+übrige (AppImage) baut `npm run dist`. Die vollständige Anleitung zum Verteilen
+und Installieren steht in [`INSTALL.md`](INSTALL.md).
+
+```bash
+npm install
+npm run dist        # → release/seb-linux-<version>-{amd64.deb,x64.pacman,x86_64.AppImage}
+```
+
+## Selbst bauen und per seb://-Link starten
 
 So musst du nichts mehr eintippen — Link in Moodle anklicken, Prüfung startet.
 
@@ -154,6 +165,9 @@ du wissen, dass du damit von den Prüfungsbedingungen abweichst.
 | `--platform=windows`  | User-Agent-Plattform-Token (Standard: `windows`, alternativ `linux`) |
 | `--no-kiosk`          | Normales Fenster statt Kiosk-Modus (Entwicklung)                     |
 | `--allow-switching`   | Kiosk-Modus ohne Always-on-Top, Alt+Tab funktioniert                 |
+| `--install`           | Für `seb://`-Links und `.seb`-Dateien registrieren (nur Benutzer)    |
+| `--uninstall`         | Diese Registrierung wieder entfernen                                 |
+| `--wayland`           | Natives Wayland statt XWayland (schwächt Always-on-Top)              |
 | `--verbose`           | Ausführliches Logging                                                |
 | `-h`, `--help`        | Hilfe                                                                |
 

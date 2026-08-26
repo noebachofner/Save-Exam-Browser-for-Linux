@@ -23,6 +23,12 @@ export interface CliOptions {
   platform?: UserAgentPlatform;
   /** Verbose logging. */
   verbose: boolean;
+  /** Register this build as the handler for seb:// links and .seb files, then exit. */
+  install: boolean;
+  /** Remove that registration, then exit. */
+  uninstall: boolean;
+  /** Ask Chromium to use native Wayland instead of XWayland. */
+  wayland: boolean;
   /** Print usage and exit. */
   help: boolean;
 }
@@ -40,6 +46,9 @@ Options:
   --no-kiosk              Open a normal window instead of kiosk mode (development)
   --allow-switching       Keep kiosk mode but allow switching to other windows
                           (no always-on-top, Alt+Tab passes through)
+  --install               Register for seb:// links and .seb files (current user), then exit
+  --uninstall             Remove that registration, then exit
+  --wayland               Use native Wayland instead of XWayland (see README)
   --verbose               Verbose logging
   -h, --help              Show this help
 `;
@@ -50,6 +59,9 @@ export function parseArgs(argv: string[]): CliOptions {
     selfTest: false,
     noKiosk: false,
     allowSwitching: process.env.SEB_LINUX_ALLOW_SWITCHING === '1',
+    install: false,
+    uninstall: false,
+    wayland: process.env.SEB_LINUX_WAYLAND === '1',
     verbose: false,
     help: false,
   };
@@ -65,6 +77,12 @@ export function parseArgs(argv: string[]): CliOptions {
       options.noKiosk = true;
     } else if (arg === '--allow-switching') {
       options.allowSwitching = true;
+    } else if (arg === '--install') {
+      options.install = true;
+    } else if (arg === '--uninstall') {
+      options.uninstall = true;
+    } else if (arg === '--wayland') {
+      options.wayland = true;
     } else if (arg === '--verbose') {
       options.verbose = true;
     } else if (arg === '--platform=windows' || arg === '--platform=linux') {

@@ -1,7 +1,7 @@
 {
   "name": "seb-linux",
   "productName": "Safe Exam Browser for Linux",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "An unofficial, independent Safe Exam Browser client for Linux (Ubuntu/ZorinOS and derivatives).",
   "license": "MIT",
   "author": {
@@ -31,8 +31,9 @@
     "start": "npm run build && electron dist/main/index.js",
     "dist:appimage": "npm run build && electron-builder --linux AppImage",
     "dist:deb": "npm run build && electron-builder --linux deb",
-    "dist": "npm run build && electron-builder --linux AppImage deb",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test"
+    "dist": "npm run build && electron-builder --linux AppImage deb pacman",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
+    "dist:pacman": "npm run build && electron-builder --linux pacman"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -62,7 +63,8 @@
       "category": "Education",
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "pacman"
       ],
       "desktop": {
         "Name": "Safe Exam Browser for Linux",
@@ -71,7 +73,15 @@
         "Keywords": "exam;seb;safeexambrowser;"
       },
       "maintainer": "No\u00e9 Bachofner <noebachofner@lxrin.ch>",
-      "synopsis": "Unofficial SEB-compatible exam browser for Linux"
+      "synopsis": "Unofficial SEB-compatible exam browser for Linux",
+      "artifactName": "${name}-${version}-${arch}.${ext}"
+    },
+    "pacman": {
+      "depends": [
+        "gtk3",
+        "nss",
+        "alsa-lib"
+      ]
     }
   }
 }
