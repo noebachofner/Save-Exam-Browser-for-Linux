@@ -41,6 +41,13 @@ if (!options.help && !app.requestSingleInstanceLock()) {
 let mainWindow: BrowserWindow | undefined;
 let configuration: LoadedConfiguration | undefined;
 let allowClose = false;
+/**
+ * False until start-up has finished creating its window. Start-up may briefly
+ * hold no window at all — the sign-in window closes before the exam window
+ * exists — and quitting at that moment would end the session immediately after
+ * a successful sign-in.
+ */
+let startupFinished = false;
 
 function buildFilter(config: LoadedConfiguration): RequestFilter | undefined {
   if (!config.settings.filterEnabled || config.settings.filterRules.length === 0) {
@@ -245,6 +252,9 @@ app.on('second-instance', () => {
 });
 
 app.on('window-all-closed', () => {
+  if (!startupFinished) {
+    return;
+  }
   app.quit();
 });
 
@@ -270,6 +280,7 @@ app.whenReady().then(async () => {
   }
   try {
     await startSession();
+    startupFinished = true;
   } catch (error) {
     logger.error('Failed to start the exam session.', error);
     if (!options.verify) {
@@ -300,5 +311,7 @@ app.whenReady().then(async () => {
     } else {
       app.exit(1);
     }
+  } finally {
+    startupFinished = true;
   }
 });

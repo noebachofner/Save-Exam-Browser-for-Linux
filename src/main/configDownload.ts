@@ -90,11 +90,25 @@ function signInThenDownload(
     let settled = false;
     let retrying = false;
 
+    /**
+     * Once signed in, the server serves the .seb file itself, which Chromium
+     * turns into a download with a save dialog. The user should never see that:
+     * we fetch the configuration ourselves. Cancel the download and treat it as
+     * the signal that the configuration has become reachable.
+     */
+    const onWillDownload = (event: { preventDefault: () => void }): void => {
+      event.preventDefault();
+      logger.debug('Suppressed a configuration download in the sign-in window.');
+      void attempt();
+    };
+    session.on('will-download', onWillDownload);
+
     const finish = (action: () => void): void => {
       if (settled) {
         return;
       }
       settled = true;
+      session.off('will-download', onWillDownload);
       window.removeAllListeners('closed');
       if (!window.isDestroyed()) {
         window.destroy();
