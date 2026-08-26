@@ -6,6 +6,7 @@ import {
   isSebLink,
   resolveSebUrl,
   resolveSebUrlInsecureFallback,
+  SebUrlError,
 } from '../core/net/sebUrl';
 import { logger } from './logger';
 
@@ -25,6 +26,12 @@ async function fetchConfig(link: string): Promise<Buffer> {
     logger.info(`Downloading configuration from ${primary}`);
     return await downloadSebConfig(primary, BOOTSTRAP_USER_AGENT);
   } catch (error) {
+    // Only retry over plain HTTP when HTTPS was not reachable at all. If the
+    // server answered — an HTTP error status, or a login page — retrying over
+    // HTTP just replaces the real cause with a connection error.
+    if (error instanceof SebUrlError) {
+      throw error;
+    }
     const fallback = resolveSebUrlInsecureFallback(link);
     if (fallback === undefined) {
       throw error;

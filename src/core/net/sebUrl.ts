@@ -39,6 +39,29 @@ export function isSebLink(value: string): boolean {
   return /^sebs?:\/\//i.test(value.trim());
 }
 
+/**
+ * True when the payload is an HTML document rather than a .seb configuration.
+ *
+ * This is the common failure with links that require a session: the server
+ * answers 200 OK with a login page, and the config parser then fails on markup
+ * with an error that says nothing about the real cause.
+ */
+export function looksLikeHtml(data: Buffer): boolean {
+  const head = data.subarray(0, 512).toString('latin1').trimStart().toLowerCase();
+  return head.startsWith('<!doctype html') || head.startsWith('<html') || head.startsWith('<head');
+}
+
+/** Raised when a configuration link resolves to a login page. */
+export class AuthenticationRequiredError extends SebUrlError {
+  constructor(public readonly finalUrl: string) {
+    super(
+      `The server returned a web page instead of a configuration file (${finalUrl}). ` +
+        'The link most likely requires you to be signed in. Download the .seb file in your ' +
+        'browser while signed in, then start the client with that file.',
+    );
+  }
+}
+
 /** Download a .seb configuration file over HTTP(S). */
 export async function downloadSebConfig(url: string, userAgent: string): Promise<Buffer> {
   const response = await fetch(url, {
@@ -46,7 +69,18 @@ export async function downloadSebConfig(url: string, userAgent: string): Promise
     redirect: 'follow',
   });
   if (!response.ok) {
-    throw new SebUrlError(`Failed to download configuration from ${url}: HTTP ${response.status}.`);
+    throw new SebUrlError(
+      `Failed to download configuration from ${url}: HTTP ${response.status} ${response.statusText}.`,
+    );
   }
-  return Buffer.from(await response.arrayBuffer());
+
+  const data = Buffer.from(await response.arrayBuffer());
+
+  // A redirect to a login form still arrives as 200 OK, so inspect the payload.
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.toLowerCase().includes('text/html') || looksLikeHtml(data)) {
+    throw new AuthenticationRequiredError(response.url || url);
+  }
+
+  return data;
 }
