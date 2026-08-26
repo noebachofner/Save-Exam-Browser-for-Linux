@@ -1,0 +1,174 @@
+# Safe Exam Browser for Linux (inoffiziell)
+
+Ein eigenständiger, SEB-kompatibler Prüfungsbrowser für Linux (Ubuntu, ZorinOS und
+Derivate).
+
+Der offizielle [Safe Exam Browser](https://github.com/SafeExamBrowser) gibt es nur für
+Windows, macOS und iOS. Der Windows-Client ist C#/.NET mit tief verdrahteten Win32-APIs
+(Registry-Policies, Explorer-Shell, Prozess-Whitelists) — der lässt sich nicht portieren.
+Dieses Projekt ist deshalb eine **Neuimplementierung der Kompatibilitäts-Schicht**: die
+Konfigurations- und Krypto-Formate von SEB sind hier 1:1 aus der offiziellen
+Referenz-Implementierung nachgebaut, das Browser-Frontend ist Electron/Chromium.
+
+> **Wichtig:** Dies ist kein offizielles Produkt des SEB-Projekts oder der ETH Zürich.
+> Ob eine konkrete Prüfung diesen Client akzeptiert, entscheidet die Konfiguration der
+> Prüfung — siehe [Wird das bei meiner Prüfung funktionieren?](#wird-das-bei-meiner-prüfung-funktionieren).
+
+## Schnellstart
+
+```bash
+git clone https://github.com/noebachofner/Save-Exam-Browser-for-Linux.git
+cd Save-Exam-Browser-for-Linux
+npm install
+npm run build
+
+# Konfiguration aus einer Datei
+npm start -- pfad/zur/exam.seb
+
+# Konfiguration über einen seb://-Link der Schule
+npm start -- "seb://moodle.example.edu/exam.seb"
+
+# Verschlüsselte Konfiguration
+npm start -- exam.seb --password=geheim
+```
+
+Erst mal nur prüfen, ob die Konfiguration korrekt gelesen wird — ohne Fenster:
+
+```bash
+npm start -- exam.seb --verify
+```
+
+Ausgabe:
+
+```
+Config Key : 4d90e6aac78afaf39cd8251c9ad1ed67cff929e22a1d6901a8696f154f33c14b
+Start URL  : https://moodle.example.edu/mod/quiz/view.php?id=42
+Headers    : enabled
+URL filter : 3 rule(s)
+```
+
+### Installierbare Pakete bauen
+
+```bash
+npm run dist:appimage   # → release/*.AppImage
+npm run dist:deb        # → release/*.deb
+```
+
+## Optionen
+
+| Option                | Bedeutung                                                           |
+| --------------------- | ------------------------------------------------------------------- |
+| `--password=<pw>`     | Passwort für eine verschlüsselte `.seb`-Datei                        |
+| `--verify`            | Konfiguration laden, Config Key ausgeben, beenden                    |
+| `--self-test`         | Fenster öffnen, Start-URL laden, Ergebnis melden, beenden            |
+| `--platform=windows`  | User-Agent-Plattform-Token (Standard: `windows`, alternativ `linux`) |
+| `--no-kiosk`          | Normales Fenster statt Kiosk-Modus (Entwicklung)                     |
+| `--verbose`           | Ausführliches Logging                                                |
+| `-h`, `--help`        | Hilfe                                                                |
+
+## Wird das bei meiner Prüfung funktionieren?
+
+Das hängt davon ab, **wie** dein Prüfungssystem SEB überprüft. Bei Moodle
+(`quizaccess_seb`) gibt es zwei unabhängige Mechanismen:
+
+### 1. Config Key — funktioniert ohne Zutun der Schule
+
+Der Config Key ist ein SHA-256 über die kanonisch serialisierte Konfigurationsdatei.
+Er ist **deterministisch und plattformunabhängig**: Windows-, macOS- und iOS-Client
+berechnen aus derselben `.seb`-Datei denselben Wert, und dieser Client auch. Der Server
+rechnet ihn selbst nach. Es steckt kein maschinen- oder OS-spezifisches Geheimnis drin.
+
+Dieser Client implementiert den Algorithmus aus der offiziellen Referenz
+(`Json.cs` + `DataProcessor.cs`) und sendet ihn als
+`X-SafeExamBrowser-ConfigKeyHash: SHA256(URL + ConfigKey)`.
+
+**Wenn deine Prüfung nur den Config Key prüft, sollte dieser Client durchkommen.**
+
+### 2. Browser Exam Key (BEK) — braucht die Schule
+
+Der BEK hängt an der Code-Signatur der Windows-Binärdatei. Er lässt sich nicht aus einer
+Konfiguration ableiten und nicht von einem anderen Client reproduzieren. Wer ihn prüft,
+muss die erlaubten Schlüssel vorher in Moodle eintragen.
+
+Dieser Client geht damit ehrlich um:
+
+- Steht ein `browserExamKey` in der Konfiguration, wird er verwendet.
+- Sonst wird aus `examKeySalt` + Config Key ein eigener Schlüssel abgeleitet — der ist
+  nur sinnvoll, wenn die Institution ihn freischaltet.
+- Sonst wird der Header weggelassen.
+
+Es wird **kein** Schlüssel einer signierten Windows-Installation nachgebaut. Das ist der
+Punkt, an dem Kompatibilität in das Umgehen einer Prüfungssicherung kippen würde, und
+technisch ginge es ohne die Signatur ohnehin nicht.
+
+**Wenn deine Prüfung einen BEK erzwingt und die Schule keinen freischaltet, funktioniert
+dieser Client dort nicht.** Das lässt sich nicht wegprogrammieren.
+
+### 3. User-Agent
+
+Moodle erkennt eine SEB-Sitzung unter anderem am `SEB`-Token im User-Agent. Dieser Client
+hängt `SEB/3.9.0` an und präsentiert standardmäßig ein Windows-Plattform-Token
+(`--platform=windows`), weil `.seb`-Konfigurationen für den Windows-Client geschrieben
+sind. Mit `--platform=linux` identifiziert er sich als das, was er ist. Das Token ist
+reine Kennung — auf Config Key und BEK hat es keinen Einfluss.
+
+## Was der Client kann — und was nicht
+
+Ehrliche Bestandsaufnahme in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md).
+Kurzfassung:
+
+**Umgesetzt**
+
+- `.seb`-Dateien lesen: XML-Plist, gzip, passwortverschlüsselt (`pswd`, `pwcc`, `plnd`)
+- `seb://` und `sebs://` Links herunterladen
+- Config Key berechnen und als Header senden
+- BEK-Header, wenn ein Schlüssel bekannt ist
+- Kiosk-Modus: Vollbild, always-on-top, kein Menü, keine Popups, keine externen Programme
+- Tastatur-Lockdown: DevTools, F-Tasten, Escape, Strg+N/T/W/P/R, Alt+F4, Alt+Pfeil
+- URL-Filter mit SEB-Ausdrücken und Regex, Block-vor-Allow-Präzedenz
+- Quit-Passwort (`hashedQuitPassword`)
+
+**Nicht umgesetzt — und auf Linux teils prinzipiell nicht möglich**
+
+- Kein OS-weiter Lockdown. Ein Linux-Userspace-Prozess kann den Window-Manager nicht
+  entmachten; Alt+Tab, virtuelle Desktops und `Strg+Alt+F<n>` bleiben dem WM überlassen.
+- Keine Prozess-Whitelist/Blacklist, keine Registry-Policies, kein Explorer-Shell-Kill
+- Kein Screen Proctoring, keine SEB-Server-Anbindung
+- Keine Public-Key-verschlüsselten `.seb`-Dateien (dafür bräuchte es das Zertifikat der
+  Institution)
+
+## Entwicklung
+
+```bash
+npm run check   # Format + Lint + Typecheck + Unit-Tests
+npm test        # nur Unit-Tests
+npm run smoke   # baut und startet die echte App unter Xvfb
+```
+
+Die Kern-Logik unter `src/core/` ist bewusst frei von Electron-Importen, damit sie ohne
+Display testbar ist. `npm run smoke` startet zusätzlich die echte Anwendung headless und
+prüft, dass Fenster, Rendering und User-Agent tatsächlich funktionieren.
+
+### Aufbau
+
+```
+src/core/          Plattformunabhängige SEB-Kompatibilität (ohne Electron)
+  config/          Plist-Parser, .seb-Container, Settings-Mapping
+  crypto/          Config Key, Browser Exam Key, Passwort-Krypto
+  browser/         URL-Filter, User-Agent
+  net/             seb://-Links
+src/main/          Electron-Hauptprozess: Fenster, Lockdown, Header-Injection
+src/preload/       Minimale Bridge (nur Quit-Passwort)
+src/renderer/      Quit-Dialog, Fehlerseite
+tests/             Unit-Tests (Vitest)
+```
+
+## Rechtliches und Fairness
+
+Dieser Client ist dafür gedacht, Prüfungen auf einem Linux-Gerät **regulär** schreiben zu
+können — nicht, um Prüfungsauflagen zu unterlaufen. Der Lockdown ist auf Linux
+nachweislich schwächer als unter Windows. Kläre den Einsatz mit deiner Schule ab, bevor
+du damit in eine bewertete Prüfung gehst.
+
+MIT-Lizenz, siehe [`LICENSE`](LICENSE). Nicht mit dem SEB-Projekt oder der ETH Zürich
+verbunden. „Safe Exam Browser" ist ein Projekt der ETH Zürich.

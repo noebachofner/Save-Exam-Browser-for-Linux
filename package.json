@@ -1,0 +1,72 @@
+{
+  "name": "seb-linux",
+  "productName": "Safe Exam Browser for Linux",
+  "version": "0.1.0",
+  "description": "An unofficial, independent Safe Exam Browser client for Linux (Ubuntu/ZorinOS and derivatives).",
+  "license": "MIT",
+  "author": "Noé Bachofner",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noebachofner/Save-Exam-Browser-for-Linux.git"
+  },
+  "main": "dist/main/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "clean": "rimraf dist release",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "smoke": "npm run build && node scripts/smoke-test.mjs",
+    "start": "npm run build && electron dist/main/index.js",
+    "dist:appimage": "npm run build && electron-builder --linux AppImage",
+    "dist:deb": "npm run build && electron-builder --linux deb",
+    "dist": "npm run build && electron-builder --linux AppImage deb",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.1",
+    "@typescript-eslint/parser": "^8.18.1",
+    "@vitest/coverage-v8": "^2.1.8",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "build": {
+    "appId": "ch.lxrin.seblinux",
+    "productName": "Safe Exam Browser for Linux",
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "category": "Education",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "desktop": {
+        "entry": {
+          "Name": "Safe Exam Browser for Linux",
+          "MimeType": "application/x-seb;x-scheme-handler/seb;x-scheme-handler/sebs"
+        }
+      }
+    }
+  }
+}
