@@ -180,6 +180,13 @@ Das Tastaturlayout wird über `setxkbmap` ermittelt. Das antwortet unter X11 und
 XWayland, in einer nativen Wayland-Sitzung (`--wayland`) nicht — dann bleibt die
 Anzeige einfach leer.
 
+### Automatische Updates
+
+Beim Start wird einmal geprüft, ob eine neuere Version vorliegt; sie wird im
+Hintergrund geladen und **beim Beenden** installiert — eine laufende Prüfung
+wird nie unterbrochen. Details und Grenzen in [`INSTALL.md`](INSTALL.md):
+AppImage und `.deb` aktualisieren sich selbst, das pacman-Paket nicht.
+
 ## Optionen
 
 | Option                | Bedeutung                                                           |
@@ -193,6 +200,7 @@ Anzeige einfach leer.
 | `--install`           | Für `seb://`-Links und `.seb`-Dateien registrieren (nur Benutzer)    |
 | `--uninstall`         | Diese Registrierung wieder entfernen                                 |
 | `--wayland`           | Natives Wayland statt XWayland (schwächt Always-on-Top)              |
+| `--no-update`         | Update-Prüfung beim Start überspringen                               |
 | `--verbose`           | Ausführliches Logging                                                |
 | `-h`, `--help`        | Hilfe                                                                |
 

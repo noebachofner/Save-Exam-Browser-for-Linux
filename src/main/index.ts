@@ -11,6 +11,7 @@ import { loadConfiguration, type LoadedConfiguration } from './loadConfig';
 import { logger } from './logger';
 import { EMERGENCY_QUIT_ACCELERATOR, RECOVER_ACCELERATOR } from './lockdown';
 import { askForQuitPassword } from './quitPrompt';
+import { startUpdateCheck, updatesDisabled } from './updater';
 
 const options = parseArgs(userArgs(process.argv, app.isPackaged));
 
@@ -179,9 +180,31 @@ async function startSession(): Promise<void> {
     logger.warn(`Start URL did not load: ${error instanceof Error ? error.message : String(error)}`);
   }
 
+  // Deliberately not awaited: a slow or unreachable update server must never
+  // stand between the user and their exam.
+  beginUpdateCheck();
+
   if (options.selfTest) {
     await runSelfTest(mainWindow, examContents, userAgent);
   }
+}
+
+/**
+ * Check for a newer version in the background and report it in the taskbar.
+ * electron-updater applies whatever it downloads when the client quits, so a
+ * running exam is never interrupted.
+ */
+function beginUpdateCheck(): void {
+  const reason = updatesDisabled(options.noUpdate);
+  if (reason !== undefined) {
+    logger.info(`Skipping the update check (${reason}).`);
+    return;
+  }
+  startUpdateCheck((status, version) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('taskbar:update', status, version);
+    }
+  });
 }
 
 /**

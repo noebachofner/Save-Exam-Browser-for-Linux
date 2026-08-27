@@ -80,6 +80,24 @@ async function apply(): Promise<void> {
   if (clock) {
     startClock(clock);
   }
+
+  // Purely informational: the update is applied when the client quits, so there
+  // is deliberately nothing here to click during an exam.
+  ipcRenderer.on('taskbar:update', (_event, status: string, version: string) => {
+    const element = document.getElementById('update');
+    if (!element) {
+      return;
+    }
+    if (status === 'ready') {
+      element.textContent = `Update ${version} bereit`;
+      element.hidden = false;
+    } else if (status === 'downloading') {
+      element.textContent = 'Update wird geladen';
+      element.hidden = false;
+    } else {
+      element.hidden = true;
+    }
+  });
 }
 
 window.addEventListener('DOMContentLoaded', () => {

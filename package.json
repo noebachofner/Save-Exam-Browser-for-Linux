@@ -1,7 +1,7 @@
 {
   "name": "seb-linux",
   "productName": "Safe Exam Browser for Linux",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "An unofficial, independent Safe Exam Browser client for Linux (Ubuntu/ZorinOS and derivatives).",
   "license": "MIT",
   "author": {
@@ -82,6 +82,16 @@
         "nss",
         "alsa-lib"
       ]
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "noebachofner",
+        "repo": "Save-Exam-Browser-for-Linux"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }
