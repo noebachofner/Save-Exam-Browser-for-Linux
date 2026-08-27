@@ -18,6 +18,17 @@ export interface WindowSettings {
   showReloadButton: boolean;
 }
 
+/** The strip along the bottom edge, mirroring the taskbar of the reference client. */
+export interface TaskbarSettings {
+  /** showTaskBar: whether the strip is shown at all. */
+  show: boolean;
+  /** taskBarHeight, in pixels. */
+  height: number;
+  showReloadButton: boolean;
+  showTime: boolean;
+  showInputLanguage: boolean;
+}
+
 export interface KeyboardSettings {
   enableEsc: boolean;
   enableF1toF12: boolean;
@@ -49,6 +60,7 @@ export interface AppSettings {
   allowSpellCheck: boolean;
 
   window: WindowSettings;
+  taskbar: TaskbarSettings;
   keyboard: KeyboardSettings;
 
   filterEnabled: boolean;
@@ -121,6 +133,13 @@ export function defaultSettings(): AppSettings {
       allowReload: false,
       showReloadButton: false,
     },
+    taskbar: {
+      show: true,
+      height: 40,
+      showReloadButton: false,
+      showTime: true,
+      showInputLanguage: false,
+    },
     keyboard: {
       enableEsc: false,
       enableF1toF12: false,
@@ -166,6 +185,15 @@ export function mapSettings(raw: { [key: string]: SebValue }): AppSettings {
       allowNavigation: asBoolean(raw['allowBrowsingBackForward'], defaults.window.allowNavigation),
       allowReload: asBoolean(raw['browserWindowAllowReload'], defaults.window.allowReload),
       showReloadButton: asBoolean(raw['showReloadButton'], defaults.window.showReloadButton),
+    },
+    taskbar: {
+      show: asBoolean(raw['showTaskBar'], defaults.taskbar.show),
+      // The reference client clamps oddly small or large values; mirror that so
+      // the strip cannot swallow the exam page or vanish.
+      height: Math.min(120, Math.max(24, asNumber(raw['taskBarHeight'], defaults.taskbar.height))),
+      showReloadButton: asBoolean(raw['showReloadButton'], defaults.taskbar.showReloadButton),
+      showTime: asBoolean(raw['showTime'], defaults.taskbar.showTime),
+      showInputLanguage: asBoolean(raw['showInputLanguage'], defaults.taskbar.showInputLanguage),
     },
 
     keyboard: {

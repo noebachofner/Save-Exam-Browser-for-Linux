@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, session } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, session, type WebContents } from 'electron';
 import { join } from 'node:path';
 import { RequestFilter } from '../core/browser/urlFilter';
 import { buildUserAgent } from '../core/browser/userAgent';
@@ -69,6 +69,8 @@ if (!managementCommand && !app.requestSingleInstanceLock()) {
 }
 
 let mainWindow: BrowserWindow | undefined;
+/** The exam page, which lives in a view above the taskbar rather than in the window itself. */
+let examContents: WebContents | undefined;
 let configuration: LoadedConfiguration | undefined;
 let allowClose = false;
 /**
@@ -144,7 +146,7 @@ async function startSession(): Promise<void> {
 
   const filter = buildFilter(configuration);
 
-  mainWindow = createKioskWindow({
+  const exam = createKioskWindow({
     settings,
     userAgent,
     filter,
@@ -152,7 +154,10 @@ async function startSession(): Promise<void> {
     allowSwitching: options.allowSwitching,
     onNavigate: (url) => injector.setCurrentPageUrl(url),
     onEmergencyQuit: forceQuit,
+    onQuitRequested: () => void requestQuit(),
   });
+  mainWindow = exam.window;
+  examContents = exam.contents;
 
   mainWindow.on('close', (event) => {
     if (allowClose) {
@@ -165,7 +170,7 @@ async function startSession(): Promise<void> {
   injector.setCurrentPageUrl(settings.startUrl);
   logger.info(`Loading start URL: ${settings.startUrl}`);
   try {
-    await mainWindow.loadURL(settings.startUrl);
+    await examContents.loadURL(settings.startUrl);
   } catch (error) {
     // A start URL that fails to load is not a reason to tear down the session:
     // the window is already open and its `did-fail-load` handler shows the
@@ -175,7 +180,7 @@ async function startSession(): Promise<void> {
   }
 
   if (options.selfTest) {
-    await runSelfTest(mainWindow, userAgent);
+    await runSelfTest(mainWindow, examContents, userAgent);
   }
 }
 
@@ -184,12 +189,19 @@ async function startSession(): Promise<void> {
  * page finished loading, and the SEB user agent reached the page. Used by CI and
  * by `npm run smoke` to catch a client that builds but cannot actually run.
  */
-async function runSelfTest(window: BrowserWindow, userAgent: string): Promise<void> {
+async function runSelfTest(window: BrowserWindow, contents: WebContents, userAgent: string): Promise<void> {
   await waitUntilVisible(window, 10_000);
 
-  const title = window.webContents.getTitle();
-  const reportedUserAgent = String(await window.webContents.executeJavaScript('navigator.userAgent'));
+  const title = contents.getTitle();
+  const reportedUserAgent = String(await contents.executeJavaScript('navigator.userAgent'));
   const visible = window.isVisible();
+  // The taskbar lives in the window's own page, the exam page in a view above
+  // it; a self test that only looked at the exam page would not notice the
+  // taskbar failing to render.
+  const taskbarPresent = Boolean(
+    await window.webContents.executeJavaScript('!!document.getElementById("bar")'),
+  );
+  console.log(`Self test  : taskbar=${taskbarPresent ? 'present' : 'MISSING'}`);
 
   console.log(`Self test  : window=${visible ? 'visible' : 'hidden'}`);
   console.log(`Self test  : title=${title}`);
@@ -204,6 +216,9 @@ async function runSelfTest(window: BrowserWindow, userAgent: string): Promise<vo
   }
   if (reportedUserAgent !== userAgent) {
     failures.push('the configured user agent did not reach the page');
+  }
+  if (!taskbarPresent) {
+    failures.push('the taskbar did not render');
   }
 
   allowClose = true;
