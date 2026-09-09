@@ -56,6 +56,36 @@ Ohne Installation geht auch:
 
 Auf Ubuntu und Zorin ist das `.deb` der einfachere Weg — es braucht kein FUSE.
 
+## Automatische Updates
+
+Der Client prüft **einmal beim Start**, ob eine neuere Version vorliegt, lädt sie
+im Hintergrund und installiert sie **beim Beenden**. Eine laufende Prüfung wird
+nie unterbrochen. Ist ein Update bereit, steht das in der Toolbar.
+
+| Format   | Automatisches Update                                        |
+| -------- | ----------------------------------------------------------- |
+| AppImage | ja, tauscht sich selbst aus                                  |
+| `.deb`   | ja, fragt beim Beenden nach dem Administrator-Passwort       |
+| `.pacman`| nein — siehe unten                                           |
+
+Abschalten:
+
+```bash
+seb-linux config.seb --no-update      # einmalig
+SEB_LINUX_NO_UPDATE=1                 # dauerhaft
+```
+
+### Warum pacman nicht automatisch aktualisiert
+
+electron-builder erzeugt für das pacman-Ziel keine Update-Metadaten. Der Client
+erkennt das und überspringt die Prüfung, statt mit einem irreführenden Fehler
+abzubrechen. Auf CachyOS/Arch lädst du das neue Paket vom Release und
+installierst es wie beim ersten Mal:
+
+```bash
+sudo pacman -U seb-linux-*-x64.pacman
+```
+
 ## Benutzung
 
 ```bash

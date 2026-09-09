@@ -29,6 +29,8 @@ export interface CliOptions {
   uninstall: boolean;
   /** Ask Chromium to use native Wayland instead of XWayland. */
   wayland: boolean;
+  /** Skip the start-up update check entirely. */
+  noUpdate: boolean;
   /** Print usage and exit. */
   help: boolean;
 }
@@ -49,6 +51,7 @@ Options:
   --install               Register for seb:// links and .seb files (current user), then exit
   --uninstall             Remove that registration, then exit
   --wayland               Use native Wayland instead of XWayland (see README)
+  --no-update             Skip the start-up update check
   --verbose               Verbose logging
   -h, --help              Show this help
 `;
@@ -62,6 +65,7 @@ export function parseArgs(argv: string[]): CliOptions {
     install: false,
     uninstall: false,
     wayland: process.env.SEB_LINUX_WAYLAND === '1',
+    noUpdate: process.env.SEB_LINUX_NO_UPDATE === '1',
     verbose: false,
     help: false,
   };
@@ -83,6 +87,8 @@ export function parseArgs(argv: string[]): CliOptions {
       options.uninstall = true;
     } else if (arg === '--wayland') {
       options.wayland = true;
+    } else if (arg === '--no-update') {
+      options.noUpdate = true;
     } else if (arg === '--verbose') {
       options.verbose = true;
     } else if (arg === '--platform=windows' || arg === '--platform=linux') {

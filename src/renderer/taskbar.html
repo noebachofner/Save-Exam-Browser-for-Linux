@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'" />
+    <title>Safe Exam Browser</title>
+    <style>
+      :root {
+        --bar-bg: #23272f;
+        --bar-fg: #e6e9ef;
+        --bar-muted: #9aa3b2;
+        --bar-border: #3a4150;
+        --bar-hover: #323844;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #1c1f26;
+        overflow: hidden;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        -webkit-user-select: none;
+        user-select: none;
+        cursor: default;
+      }
+      #bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        background: var(--bar-bg);
+        border-top: 1px solid var(--bar-border);
+        color: var(--bar-fg);
+        font-size: 13px;
+      }
+      .spacer {
+        flex: 1;
+      }
+      button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 28px;
+        padding: 0 12px;
+        border: 1px solid var(--bar-border);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--bar-fg);
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--bar-hover);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      button.quit:hover {
+        background: #7f1d1d;
+        border-color: #b91c1c;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 8px;
+        color: var(--bar-muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .status strong {
+        color: var(--bar-fg);
+        font-weight: 600;
+      }
+      .update {
+        color: #86efac;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar">
+      <button id="quit" class="quit" type="button" hidden title="Prüfung beenden">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <path d="M16 17l5-5-5-5" />
+          <path d="M21 12H9" />
+        </svg>
+        <span>Beenden</span>
+      </button>
+
+      <button id="reload" type="button" hidden title="Seite neu laden">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+          <path d="M21 3v6h-6" />
+        </svg>
+        <span>Neu laden</span>
+      </button>
+
+      <span class="spacer"></span>
+
+      <span id="update" class="status update" hidden title="Wird beim Beenden installiert"></span>
+
+      <span id="language" class="status" hidden title="Tastaturlayout"></span>
+      <span id="clock" class="status" hidden></span>
+    </div>
+  </body>
+</html>

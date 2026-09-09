@@ -155,6 +155,38 @@ Beides schwächt die Abschottung, die deine Schule mit SEB durchsetzt. Auf deine
 eigenen Rechner ist das deine Entscheidung; in einer bewerteten Prüfung solltest
 du wissen, dass du damit von den Prüfungsbedingungen abweichst.
 
+### Toolbar am unteren Rand
+
+Wie beim offiziellen Client liegt am unteren Bildschirmrand eine Leiste. Die
+Prüfungsseite läuft in einer eigenen View darüber und kann sie deshalb weder
+überdecken noch umgestalten noch ihre Knöpfe erreichen.
+
+Was angezeigt wird, steuert die Konfiguration:
+
+| Schlüssel             | Wirkung                                   |
+| --------------------- | ----------------------------------------- |
+| `showTaskBar`         | Leiste überhaupt anzeigen                 |
+| `taskBarHeight`       | Höhe in Pixeln (24–120)                   |
+| `allowQuit`           | Knopf „Beenden"                           |
+| `showReloadButton`    | Knopf „Neu laden"                         |
+| `showTime`            | Uhr                                       |
+| `showInputLanguage`   | Tastaturlayout                            |
+
+Der Beenden-Knopf geht durch den normalen Weg — verlangt die Konfiguration ein
+Quit-Passwort, wird danach gefragt. `Strg` + `Shift` + `Q` bleibt davon
+unberührt.
+
+Das Tastaturlayout wird über `setxkbmap` ermittelt. Das antwortet unter X11 und
+XWayland, in einer nativen Wayland-Sitzung (`--wayland`) nicht — dann bleibt die
+Anzeige einfach leer.
+
+### Automatische Updates
+
+Beim Start wird einmal geprüft, ob eine neuere Version vorliegt; sie wird im
+Hintergrund geladen und **beim Beenden** installiert — eine laufende Prüfung
+wird nie unterbrochen. Details und Grenzen in [`INSTALL.md`](INSTALL.md):
+AppImage und `.deb` aktualisieren sich selbst, das pacman-Paket nicht.
+
 ## Optionen
 
 | Option                | Bedeutung                                                           |
@@ -168,6 +200,7 @@ du wissen, dass du damit von den Prüfungsbedingungen abweichst.
 | `--install`           | Für `seb://`-Links und `.seb`-Dateien registrieren (nur Benutzer)    |
 | `--uninstall`         | Diese Registrierung wieder entfernen                                 |
 | `--wayland`           | Natives Wayland statt XWayland (schwächt Always-on-Top)              |
+| `--no-update`         | Update-Prüfung beim Start überspringen                               |
 | `--verbose`           | Ausführliches Logging                                                |
 | `-h`, `--help`        | Hilfe                                                                |
 

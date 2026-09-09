@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import type { SebValue } from '../crypto/canonicalJson';
 import { computeConfigKey } from '../crypto/configKey';
@@ -31,6 +32,42 @@ export class PasswordRequiredError extends SebConfigError {
   constructor() {
     super('This .seb file is password-protected; a password is required.');
   }
+}
+export class WrongPasswordError extends SebConfigError {
+  constructor() {
+    super('The password did not decrypt this .seb file.');
+  }
+}
+
+/**
+ * One password to try against an encrypted block.
+ *
+ * `isHash` marks a value that is already a hash rather than something the user
+ * typed, which matters for `pwcc` blocks: those are keyed on the hash of the
+ * password, so a typed password has to be hashed first while a stored hash must
+ * be used as it stands.
+ */
+export interface PasswordAttempt {
+  value: string;
+  isHash: boolean;
+}
+
+/** SHA-256, lowercase hex — the form the reference client hashes passwords into. */
+function hashPassword(password: string): string {
+  return createHash('sha256').update(password, 'utf8').digest('hex');
+}
+
+/**
+ * The key actually handed to the cipher, which depends on the block type.
+ *
+ * Reference: SafeExamBrowser.Configuration/DataFormats/BinaryParser.cs
+ * (DetermineEncryptionParametersFor).
+ */
+export function keyForBlock(prefix: string, attempt: PasswordAttempt): string {
+  if (prefix === BLOCK_PASSWORD_CONFIGURE_CLIENT) {
+    return attempt.isHash ? attempt.value : hashPassword(attempt.value);
+  }
+  return attempt.value;
 }
 export class UnsupportedFormatError extends SebConfigError {}
 
@@ -85,19 +122,34 @@ export function parseSebConfig(raw: Buffer, password?: string): SebConfig {
 
     case BLOCK_PASSWORD:
     case BLOCK_PASSWORD_CONFIGURE_CLIENT: {
-      if (password === undefined) {
-        throw new PasswordRequiredError();
+      // The empty password is tried first, always. Configurations handed out to
+      // start an exam are routinely encrypted with it, and the reference client
+      // does the same before ever prompting anyone — so requiring a password
+      // here would lock users out of files that need none.
+      const attempts: PasswordAttempt[] = [{ value: '', isHash: true }];
+      if (password !== undefined) {
+        attempts.push({ value: password, isHash: false });
       }
-      const decrypted = decryptWithPassword(Buffer.from(body), password);
-      // The decrypted payload is itself a (possibly compressed) plain block or XML.
-      data = maybeGunzip(decrypted);
-      if (looksLikeXml(data)) {
+
+      for (const attempt of attempts) {
+        let decrypted: Buffer;
+        try {
+          decrypted = decryptWithPassword(Buffer.from(body), keyForBlock(prefix, attempt));
+        } catch {
+          continue;
+        }
+        // The decrypted payload is itself a (possibly compressed) plain block or XML.
+        data = maybeGunzip(decrypted);
+        if (looksLikeXml(data)) {
+          return parseSettings(data.toString('utf8'));
+        }
+        if (data.subarray(0, PREFIX_LENGTH).toString('latin1') === BLOCK_PLAIN) {
+          return parsePlainBlock(data.subarray(PREFIX_LENGTH));
+        }
         return parseSettings(data.toString('utf8'));
       }
-      if (data.subarray(0, PREFIX_LENGTH).toString('latin1') === BLOCK_PLAIN) {
-        return parsePlainBlock(data.subarray(PREFIX_LENGTH));
-      }
-      return parseSettings(data.toString('utf8'));
+
+      throw password === undefined ? new PasswordRequiredError() : new WrongPasswordError();
     }
 
     case BLOCK_PUBLIC_KEY:

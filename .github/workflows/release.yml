@@ -64,6 +64,10 @@ jobs:
       - name: Confirm every expected artifact exists
         run: |
           set -e
+          if [ ! -f release/latest-linux.yml ]; then
+            echo "release/latest-linux.yml is missing; auto-update would find nothing." >&2
+            exit 1
+          fi
           for pattern in 'seb-linux-*.AppImage' 'seb-linux-*.deb' 'seb-linux-*.pacman'; do
             # shellcheck disable=SC2086
             count=$(find release -maxdepth 1 -name "$pattern" | wc -l)
@@ -85,6 +89,7 @@ jobs:
             release/seb-linux-*.AppImage
             release/seb-linux-*.deb
             release/seb-linux-*.pacman
+            release/latest-linux.yml
             release/SHA256SUMS.txt
             INSTALL.md
 
@@ -110,5 +115,6 @@ jobs:
             release/seb-linux-*.AppImage
             release/seb-linux-*.deb
             release/seb-linux-*.pacman
+            release/latest-linux.yml
             release/SHA256SUMS.txt
             INSTALL.md

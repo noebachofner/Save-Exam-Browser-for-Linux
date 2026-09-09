@@ -1,4 +1,4 @@
-import type { BrowserWindow, Input } from 'electron';
+import type { Input, WebContents } from 'electron';
 import type { KeyboardSettings } from '../core/config/appSettings';
 
 /**
@@ -84,12 +84,12 @@ export function isEmergencyQuit(input: Input): boolean {
 }
 
 export function installKeyboardLockdown(
-  window: BrowserWindow,
+  contents: WebContents,
   settings: KeyboardSettings,
   onEmergencyQuit?: () => void,
   onRecoverWindow?: () => void,
 ): void {
-  window.webContents.on('before-input-event', (event, input) => {
+  contents.on('before-input-event', (event, input) => {
     // Checked before every block rule: a user must never be trapped inside an
     // application running on their own machine.
     if (onEmergencyQuit && isEmergencyQuit(input)) {
@@ -108,7 +108,7 @@ export function installKeyboardLockdown(
   });
 
   if (!settings.enableRightMouse) {
-    window.webContents.on('context-menu', (event) => {
+    contents.on('context-menu', (event) => {
       event.preventDefault();
     });
   }

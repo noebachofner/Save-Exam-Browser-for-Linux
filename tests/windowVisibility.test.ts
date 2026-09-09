@@ -25,7 +25,9 @@ describe('window visibility', () => {
 
   it('does not tear down the session when the start URL fails to load', () => {
     const code = source('index.ts');
-    const loadCall = code.indexOf('await mainWindow.loadURL(settings.startUrl)');
+    // The exam page lives in a view above the taskbar, so the load goes through
+    // its WebContents rather than the window's own.
+    const loadCall = code.indexOf('await examContents.loadURL(settings.startUrl)');
     expect(loadCall).toBeGreaterThan(-1);
     // The call must sit inside a try block, otherwise a failed load races the
     // did-fail-load handler and stacks a second error window on top.
