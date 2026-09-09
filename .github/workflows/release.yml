@@ -100,17 +100,18 @@ jobs:
           name: ${{ github.ref_name }}
           generate_release_notes: true
           body: |
-            Unofficial Safe Exam Browser client for Linux.
+            Independent, SEB-compatible exam browser for Linux. Optimized for Moodle and Classtime.
 
-            | Distribution | Datei |
-            | --- | --- |
-            | Ubuntu, Zorin OS, Debian | `seb-linux-*-amd64.deb` |
-            | CachyOS, Arch, Manjaro | `seb-linux-*-x64.pacman` |
-            | Alles andere | `seb-linux-*-x86_64.AppImage` |
+            **Unofficial** — not affiliated with the Safe Exam Browser project, ETH Zürich, or any institution. Exam compatibility cannot be guaranteed.
 
-            Installationsanleitung: **INSTALL.md** (unten angehängt).
+            **Downloads**
+            - `*.AppImage` — any 64-bit Linux distribution
+            - `*.deb`
+            - `*.pacman` — CachyOS / Arch
 
-            Prüfsummen: `sha256sum -c SHA256SUMS.txt`
+            See **INSTALL.md** (attached) for installation. Verify with `sha256sum -c SHA256SUMS.txt`.
+
+            Made with love in Switzerland 🇨🇭
           files: |
             release/seb-linux-*.AppImage
             release/seb-linux-*.deb
