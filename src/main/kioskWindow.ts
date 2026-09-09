@@ -29,10 +29,17 @@ export interface KioskWindowOptions {
 export function createKioskWindow(options: KioskWindowOptions): BrowserWindow {
   const { settings, userAgent, filter, kiosk, allowSwitching } = options;
 
+  // Kiosk mode is inherently fullscreen: passing `fullscreen: false` alongside
+  // `kiosk: true` is contradictory, and some Linux compositors then honour the
+  // false and leave the window un-maximised. So in kiosk mode fullscreen is
+  // always on, regardless of the configuration's browserViewMode; only a
+  // non-kiosk (development) window follows the setting.
+  const fullscreen = kiosk ? true : settings.window.fullscreen;
+
   const window = new BrowserWindow({
     show: false,
     kiosk,
-    fullscreen: kiosk && settings.window.fullscreen,
+    fullscreen,
     alwaysOnTop: kiosk && !allowSwitching,
     minimizable: true,
     autoHideMenuBar: true,
@@ -121,6 +128,11 @@ export function createKioskWindow(options: KioskWindowOptions): BrowserWindow {
   window.focus();
   window.once('ready-to-show', () => {
     window.focus();
+    // Some Linux compositors do not apply the constructor's kiosk/fullscreen
+    // until the window is mapped, so assert it again once it is on screen.
+    if (kiosk && !window.isFullScreen()) {
+      window.setFullScreen(true);
+    }
   });
 
   return window;
