@@ -74,13 +74,17 @@
       },
       "maintainer": "No\u00e9 Bachofner <noebachofner@lxrin.ch>",
       "synopsis": "Unofficial SEB-compatible exam browser for Linux",
-      "artifactName": "${name}-${version}-${arch}.${ext}"
+      "artifactName": "${name}-${version}-${arch}.${ext}",
+      "description": "Independent, Safe Exam Browser compatible exam browser for Linux. Reads .seb configurations and seb:// links, computes the SEB Config Key, and sends the SEB integrity headers so exam platforms recognise the session."
     },
     "pacman": {
       "depends": [
         "gtk3",
         "nss",
         "alsa-lib"
+      ],
+      "fpm": [
+        "build/ch.lxrin.seblinux.metainfo.xml=/usr/share/metainfo/ch.lxrin.seblinux.metainfo.xml"
       ]
     },
     "publish": [
@@ -89,9 +93,15 @@
         "owner": "noebachofner",
         "repo": "Save-Exam-Browser-for-Linux"
       }
-    ]
+    ],
+    "deb": {
+      "fpm": [
+        "build/ch.lxrin.seblinux.metainfo.xml=/usr/share/metainfo/ch.lxrin.seblinux.metainfo.xml"
+      ]
+    }
   },
   "dependencies": {
     "electron-updater": "^6.8.9"
-  }
+  },
+  "homepage": "https://github.com/noebachofner/Save-Exam-Browser-for-Linux"
 }

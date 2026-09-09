@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>ch.lxrin.seblinux</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Safe Exam Browser for Linux</name>
+  <summary>Unofficial SEB-compatible exam browser for Linux</summary>
+
+  <developer id="ch.lxrin">
+    <name>Noé Bachofner</name>
+  </developer>
+
+  <description>
+    <p>
+      An independent, Safe Exam Browser compatible exam browser for Linux
+      (Ubuntu, Zorin OS, CachyOS and derivatives). It reads .seb configuration
+      files, computes the SEB Config Key, and sends the SEB integrity headers so
+      that exam platforms such as Moodle recognise the session.
+    </p>
+    <p>This is not an official product of the Safe Exam Browser project or ETH Zurich.</p>
+    <p>Notable features:</p>
+    <ul>
+      <li>Reads .seb files (XML plist, gzip, password-encrypted) and seb:// links</li>
+      <li>Kiosk mode: fullscreen, always-on-top, no popups, no external programs</li>
+      <li>Keyboard lockdown for the shortcuts a configuration disables</li>
+      <li>URL filtering with SEB expressions and regular expressions</li>
+      <li>Emergency exit (Ctrl+Shift+Q) so a user is never trapped</li>
+      <li>Background updates that install on quit, never during an exam</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">seb-linux.desktop</launchable>
+
+  <categories>
+    <category>Education</category>
+  </categories>
+
+  <keywords>
+    <keyword>exam</keyword>
+    <keyword>seb</keyword>
+    <keyword>safeexambrowser</keyword>
+  </keywords>
+
+  <url type="homepage">https://github.com/noebachofner/Save-Exam-Browser-for-Linux</url>
+  <url type="bugtracker">https://github.com/noebachofner/Save-Exam-Browser-for-Linux/issues</url>
+  <url type="vcs-browser">https://github.com/noebachofner/Save-Exam-Browser-for-Linux</url>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.6.4" date="2026-09-09">
+      <description>
+        <p>Exact Windows user agent, encrypted-configuration support, and the taskbar removed.</p>
+      </description>
+    </release>
+  </releases>
+</component>
