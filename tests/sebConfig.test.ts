@@ -1,6 +1,12 @@
+import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { parseSebConfig, PasswordRequiredError, UnsupportedFormatError } from '../src/core/config/sebConfig';
+import {
+  parseSebConfig,
+  PasswordRequiredError,
+  UnsupportedFormatError,
+  WrongPasswordError,
+} from '../src/core/config/sebConfig';
 import {
   encryptWithPassword,
   decryptWithPassword,
@@ -46,8 +52,11 @@ describe('.seb container parsing', () => {
     expect(config.settings['startURL']).toBe('https://example.edu/quiz');
   });
 
-  it('parses a pwcc block the same way', () => {
-    const payload = encryptWithPassword(Buffer.from(XML, 'utf8'), 'secret');
+  it('parses a pwcc block, which is keyed on the hash of the password', () => {
+    // Unlike pswd, a configure-client block is encrypted with the SHA-256 of the
+    // password rather than the password itself.
+    const key = createHash('sha256').update('secret', 'utf8').digest('hex');
+    const payload = encryptWithPassword(Buffer.from(XML, 'utf8'), key);
     const config = parseSebConfig(prefixed('pwcc', payload), 'secret');
     expect(config.settings['startURL']).toBe('https://example.edu/quiz');
   });
@@ -57,9 +66,9 @@ describe('.seb container parsing', () => {
     expect(() => parseSebConfig(prefixed('pswd', payload))).toThrow(PasswordRequiredError);
   });
 
-  it('rejects a wrong password', () => {
+  it('rejects a wrong password, distinctly from a missing one', () => {
     const payload = encryptWithPassword(Buffer.from(XML, 'utf8'), 'hunter2');
-    expect(() => parseSebConfig(prefixed('pswd', payload), 'wrong')).toThrow(PasswordDecryptionError);
+    expect(() => parseSebConfig(prefixed('pswd', payload), 'wrong')).toThrow(WrongPasswordError);
   });
 
   it('reports public-key encrypted files as unsupported', () => {
