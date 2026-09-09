@@ -29,11 +29,11 @@
     "test:coverage": "vitest run --coverage",
     "smoke": "npm run build && node scripts/smoke-test.mjs",
     "start": "npm run build && electron dist/main/index.js",
-    "dist:appimage": "npm run build && electron-builder --linux AppImage",
-    "dist:deb": "npm run build && electron-builder --linux deb",
-    "dist": "npm run build && electron-builder --linux AppImage deb pacman",
+    "dist:appimage": "npm run build && electron-builder --linux AppImage --publish never",
+    "dist:deb": "npm run build && electron-builder --linux deb --publish never",
+    "dist": "npm run build && electron-builder --linux AppImage deb pacman --publish never",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
-    "dist:pacman": "npm run build && electron-builder --linux pacman"
+    "dist:pacman": "npm run build && electron-builder --linux pacman --publish never"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
