@@ -1,7 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { AppSettings, defaultSettings, mapSettings } from '../core/config/appSettings';
-import { parseSebConfig, PasswordRequiredError, type SebConfig } from '../core/config/sebConfig';
+import {
+  parseSebConfig,
+  PasswordRequiredError,
+  WrongPasswordError,
+  type SebConfig,
+} from '../core/config/sebConfig';
 import { isSebLink, resolveSebUrl, resolveSebUrlInsecureFallback, SebUrlError } from '../core/net/sebUrl';
+import { askForConfigPassword } from './configPasswordPrompt';
 import { downloadWithSignIn } from './configDownload';
 import { logger } from './logger';
 
@@ -61,19 +67,58 @@ export async function loadConfiguration(
   const raw =
     isSebLink(source) || /^https?:\/\//i.test(source) ? await fetchConfig(source) : await readFile(source);
 
-  let parsed: SebConfig;
-  try {
-    parsed = parseSebConfig(raw, password);
-  } catch (error) {
-    if (error instanceof PasswordRequiredError && password === undefined) {
-      throw new Error('This configuration is password-protected. Re-run with --password=<password>.');
-    }
-    throw error;
-  }
+  const parsed = await parseWithPassword(raw, password);
 
   const settings = mapSettings(parsed.settings);
   logger.info(`Configuration loaded from ${source}`);
   logger.info(`Config Key: ${parsed.configKey}`);
 
   return { settings, configKey: parsed.configKey, origin: source };
+}
+
+/**
+ * Parse the configuration, asking for a password only if one is genuinely
+ * needed.
+ *
+ * The parser already tries the empty password, which is what configurations
+ * handed out to start an exam normally use, so most files never reach the
+ * prompt. When one does, it is asked for interactively rather than demanded on
+ * the command line: a session started from a `seb://` link has no command line
+ * for the user to put it on. Five attempts, matching the reference client.
+ */
+async function parseWithPassword(raw: Buffer, password: string | undefined): Promise<SebConfig> {
+  try {
+    return parseSebConfig(raw, password);
+  } catch (error) {
+    const needsPassword = error instanceof PasswordRequiredError || error instanceof WrongPasswordError;
+    if (!needsPassword) {
+      throw error;
+    }
+    if (password !== undefined) {
+      logger.warn('The supplied password did not decrypt the configuration; asking for another.');
+    }
+  }
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const entered = await askForConfigPassword((candidate) => {
+      try {
+        parseSebConfig(raw, candidate);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    if (entered === undefined) {
+      throw new Error('A password is needed to open this configuration, and none was entered.');
+    }
+
+    try {
+      return parseSebConfig(raw, entered);
+    } catch {
+      logger.warn('Wrong configuration password.');
+    }
+  }
+
+  throw new Error('The configuration could not be decrypted: the password was wrong.');
 }
