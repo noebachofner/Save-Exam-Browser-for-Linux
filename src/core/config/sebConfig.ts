@@ -122,11 +122,19 @@ export function parseSebConfig(raw: Buffer, password?: string): SebConfig {
 
     case BLOCK_PASSWORD:
     case BLOCK_PASSWORD_CONFIGURE_CLIENT: {
-      // The empty password is tried first, always. Configurations handed out to
-      // start an exam are routinely encrypted with it, and the reference client
-      // does the same before ever prompting anyone — so requiring a password
-      // here would lock users out of files that need none.
-      const attempts: PasswordAttempt[] = [{ value: '', isHash: true }];
+      // Match the order the reference client tries before it ever prompts
+      // (ConfigurationBaseOperation.TryLoadSettings):
+      //  1. the empty password, and
+      //  2. the hash of the current settings password — which on a normally
+      //     installed client is the hash of the empty string.
+      // Classtime and similar platforms encrypt the exam-start config with that
+      // second key, which is exactly why Windows never asks: it retries with it
+      // automatically. Without this step a file that needs no user password
+      // would still reach the prompt.
+      const attempts: PasswordAttempt[] = [
+        { value: '', isHash: true },
+        { value: hashPassword(''), isHash: true },
+      ];
       if (password !== undefined) {
         attempts.push({ value: password, isHash: false });
       }

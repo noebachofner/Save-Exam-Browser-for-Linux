@@ -51,3 +51,18 @@ describe('encrypted configurations', () => {
     expect(() => parseSebConfig(block('pswd', 'geheim'), 'falsch')).toThrow(WrongPasswordError);
   });
 });
+
+describe('the key the Windows client retries with', () => {
+  it('opens a pswd file encrypted with the hash of the empty password, unprompted', () => {
+    // On a normally installed client the "current settings password" is empty,
+    // and its hash is what the reference retries with before ever prompting.
+    // Classtime encrypts its exam-start config with exactly this.
+    const key = createHash('sha256').update('', 'utf8').digest('hex');
+    expect(parseSebConfig(block('pswd', key)).settings.startURL).toBe('https://x/exam');
+  });
+
+  it('opens a pwcc file encrypted with the hash of the empty password, unprompted', () => {
+    const key = createHash('sha256').update('', 'utf8').digest('hex');
+    expect(parseSebConfig(block('pwcc', key)).settings.startURL).toBe('https://x/exam');
+  });
+});
