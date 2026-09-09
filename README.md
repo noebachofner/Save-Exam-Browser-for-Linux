@@ -214,10 +214,12 @@ dieser Client dort nicht.** Das lässt sich nicht wegprogrammieren.
 ### 3. User-Agent
 
 Moodle erkennt eine SEB-Sitzung unter anderem am `SEB`-Token im User-Agent. Dieser Client
-hängt `SEB/3.9.0` an und präsentiert standardmäßig ein Windows-Plattform-Token
-(`--platform=windows`), weil `.seb`-Konfigurationen für den Windows-Client geschrieben
-sind. Mit `--platform=linux` identifiziert er sich als das, was er ist. Das Token ist
-reine Kennung — auf Config Key und BEK hat es keinen Einfluss.
+sendet standardmäßig **exakt** den String des Windows-Clients — gleiches Format, gleicher
+Windows-Token (`Windows NT 10.0`, ohne `Win64; x64`), kein App-Name, kein Electron-Token —
+und normalisiert zusätzlich die Client Hints (`Sec-CH-UA-Platform`) auf Windows. Mit
+`--platform=linux` identifiziert er sich als das, was er ist. Das Token ist reine Kennung
+— auf Config Key und BEK hat es keinen Einfluss.
+
 
 ## Was der Client kann — und was nicht
 

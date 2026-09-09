@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSettings, mapSettings } from '../src/core/config/appSettings';
-import { buildUserAgent, cleanBaseUserAgent, withPlatform, SEB_VERSION } from '../src/core/browser/userAgent';
+import { buildUserAgent, chromiumVersionOf, SEB_VERSION } from '../src/core/browser/userAgent';
 import { hashPassword, verifyPassword } from '../src/core/crypto/passwordHash';
 import { isSebLink, resolveSebUrl, resolveSebUrlInsecureFallback, SebUrlError } from '../src/core/net/sebUrl';
 import { parseArgs, userArgs } from '../src/main/cli';
@@ -61,28 +61,38 @@ describe('settings mapping', () => {
 });
 
 describe('user agent', () => {
+  // A stock Electron agent, including the app name Electron injects, which must
+  // not leak into the result.
   const chrome =
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) SafeExamBrowserforLinux/0.6.2 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36';
 
-  it('appends the SEB token so exam servers recognize the client', () => {
+  it('matches the Windows client byte for byte by default', () => {
+    // Exactly the reference format: Windows NT 10.0 with no Win64/x64, the
+    // engine's Chromium version, the SEB token, and nothing else.
+    expect(buildUserAgent({ baseUserAgent: chrome })).toBe(
+      `Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.191 SEB/${SEB_VERSION}`,
+    );
+  });
+
+  it('leaks neither the app name nor the Electron token', () => {
     const ua = buildUserAgent({ baseUserAgent: chrome });
-    expect(ua).toContain(`SEB/${SEB_VERSION}`);
-    expect(ua.startsWith('Mozilla/5.0')).toBe(true);
+    expect(ua).not.toMatch(/electron/i);
+    expect(ua).not.toMatch(/safeexambrowserforlinux/i);
+    expect(ua).not.toMatch(/seb-linux/i);
   });
 
-  it('strips the Electron token from the base user agent', () => {
-    const withElectron = `${chrome} Electron/33.3.1`;
-    expect(cleanBaseUserAgent(withElectron)).not.toContain('Electron');
-    expect(buildUserAgent({ baseUserAgent: withElectron })).not.toContain('Electron');
+  it('reads the Chromium version from the engine', () => {
+    expect(chromiumVersionOf(chrome)).toBe('130.0.6723.191');
   });
 
-  it('appends a configured suffix', () => {
+  it('appends a configured suffix after the SEB token', () => {
     expect(buildUserAgent({ baseUserAgent: chrome, suffix: 'MyUni' })).toMatch(/SEB\/[\d.]+ MyUni$/);
   });
 
   it('honours a full custom user agent', () => {
-    const ua = buildUserAgent({ baseUserAgent: chrome, custom: 'Custom/1.0' });
-    expect(ua).toBe(`Custom/1.0 SEB/${SEB_VERSION}`);
+    expect(buildUserAgent({ baseUserAgent: chrome, custom: 'Custom/1.0' })).toBe(
+      `Custom/1.0 SEB/${SEB_VERSION}`,
+    );
   });
 });
 
@@ -159,30 +169,45 @@ describe('user agent platform token', () => {
   const chrome =
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-  it('presents a Windows platform token when asked', () => {
+  it('presents the exact Windows platform token, without Win64/x64', () => {
     const ua = buildUserAgent({ baseUserAgent: chrome, platform: 'windows' });
-    expect(ua).toContain('Windows NT 10.0; Win64; x64');
+    expect(ua).toContain('(Windows NT 10.0)');
+    expect(ua).not.toContain('Win64');
     expect(ua).not.toContain('X11; Linux');
-    expect(ua).toContain(`SEB/${SEB_VERSION}`);
   });
 
-  it('keeps the Linux token when asked', () => {
+  it('can identify honestly as Linux when asked', () => {
     expect(buildUserAgent({ baseUserAgent: chrome, platform: 'linux' })).toContain('X11; Linux x86_64');
   });
 
-  it('leaves the base platform untouched when no platform is given', () => {
-    expect(buildUserAgent({ baseUserAgent: chrome })).toContain('X11; Linux x86_64');
-  });
-
-  it('withPlatform only rewrites the first parenthesised group', () => {
-    expect(withPlatform(chrome, 'windows')).toBe(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-    );
+  it('defaults to the Windows token when no platform is given', () => {
+    expect(buildUserAgent({ baseUserAgent: chrome })).toContain('(Windows NT 10.0)');
   });
 
   it('a custom user agent overrides the platform token entirely', () => {
     expect(buildUserAgent({ baseUserAgent: chrome, platform: 'windows', custom: 'Custom/1.0' })).toBe(
       `Custom/1.0 SEB/${SEB_VERSION}`,
     );
+  });
+});
+
+describe('client hints', () => {
+  it('rewrites the platform to Windows and strips Electron from the brand list', async () => {
+    const { SebHeaderInjector } = await import('../src/main/headers');
+    const incoming = {
+      'Sec-CH-UA': '"Chromium";v="130", "Electron";v="33", "Not?A_Brand";v="99"',
+      'Sec-CH-UA-Platform': '"Linux"',
+      'Sec-CH-UA-Platform-Version': '"6.18.0"',
+    };
+    const out = SebHeaderInjector.windowsClientHints(incoming);
+    expect(out['Sec-CH-UA-Platform']).toBe('"Windows"');
+    expect(out['Sec-CH-UA-Platform-Version']).toBe('"10.0.0"');
+    expect(out['Sec-CH-UA']).not.toMatch(/electron/i);
+    expect(out['Sec-CH-UA']).toContain('"Chromium"');
+  });
+
+  it('leaves a request that carries no client hints untouched', async () => {
+    const { SebHeaderInjector } = await import('../src/main/headers');
+    expect(SebHeaderInjector.windowsClientHints({ Accept: 'text/html' })).toEqual({});
   });
 });

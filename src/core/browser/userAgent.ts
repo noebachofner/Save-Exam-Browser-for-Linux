@@ -1,71 +1,77 @@
 /**
  * User agent construction.
  *
- * Exam servers identify a Safe Exam Browser session partly by the `SEB` token in
- * the User-Agent string — the Moodle access rule, for example, looks for it. A
- * client that does not carry the token is not recognized as SEB at all, so every
- * SEB client (Windows, macOS, iOS) appends its own SEB suffix.
+ * The string is assembled to match the official Windows client byte for byte,
+ * because an exam server identifies a Safe Exam Browser session in part by it —
+ * the Moodle access rule looks for the `SEB` token — and anything that deviates
+ * (an app name, a `Win64; x64` that the reference omits, a platform that reads
+ * Linux) is a way to tell this client apart from the Windows one.
  *
- * The platform token is configurable. .seb configurations themselves carry user
- * agent overrides (`browserUserAgent`, `browserUserAgentWinDesktopModeCustom`),
- * so presenting a chosen platform string is part of the format rather than a
- * trick — but note that the platform token is only an identification string. It
- * has no bearing on the Config Key or Browser Exam Key, which are what an exam
- * server actually verifies cryptographically.
+ * Reference: SafeExamBrowser.Browser/Responsibilities/Browser/
+ * ConfigurationResponsibility.cs (InitializeUserAgent), which builds:
+ *   Mozilla/5.0 (Windows NT {major}.{minor}) AppleWebKit/537.36 (KHTML, like
+ *   Gecko) Chrome/{ChromiumVersion} SEB/{version}
+ * with no Win64/x64 token and no application name.
+ *
+ * The platform token and SEB version have no bearing on the Config Key or
+ * Browser Exam Key, which are what an exam server verifies cryptographically —
+ * this only governs how the client identifies itself.
  */
 
-/** SEB protocol version this client implements compatibility for. */
+/**
+ * SEB version presented in the token. Matches a real Windows SEB release rather
+ * than an internal version, so it is indistinguishable from the reference.
+ */
 export const SEB_VERSION = '3.9.0';
+
+/**
+ * Chromium version used when it cannot be read from the engine. Kept in step
+ * with the bundled Electron's Chromium so the value stays internally consistent
+ * with the engine actually rendering the page.
+ */
+const FALLBACK_CHROMIUM_VERSION = '130.0.6723.191';
 
 /** Platform token presented in the user agent. */
 export type UserAgentPlatform = 'windows' | 'linux';
 
+/**
+ * The platform tokens. The Windows token is exactly what the reference emits —
+ * `Windows NT 10.0`, without the `Win64; x64` that a stock Chromium would add.
+ */
 const PLATFORM_TOKENS: Record<UserAgentPlatform, string> = {
-  windows: 'Windows NT 10.0; Win64; x64',
+  windows: 'Windows NT 10.0',
   linux: 'X11; Linux x86_64',
 };
 
 export interface UserAgentOptions {
-  /** Chromium user agent of the underlying engine. */
+  /** Chromium user agent of the underlying engine, used to read its version. */
   baseUserAgent: string;
-  /** Platform token to present. Defaults to the real platform (linux). */
+  /** Platform token to present. Defaults to windows. */
   platform?: UserAgentPlatform;
-  /** Value of the `browserUserAgent` config key, if set. */
+  /** Value of the `browserUserAgent` config key, appended if set. */
   suffix?: string;
   /** Full replacement from `browserUserAgentWinDesktopModeCustom`, if set. */
   custom?: string;
 }
 
-/**
- * Strip Electron/app tokens that would otherwise leak into the user agent and
- * confuse servers that pattern-match on browser identity.
- */
-export function cleanBaseUserAgent(userAgent: string): string {
-  return userAgent
-    .replace(/\s*Electron\/[\d.]+/gi, '')
-    .replace(/\s*seb-linux\/[\d.]+/gi, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
-
-/** Replace the platform token inside a Chromium user agent string. */
-export function withPlatform(userAgent: string, platform: UserAgentPlatform): string {
-  const token = PLATFORM_TOKENS[platform];
-  return userAgent.replace(/\(([^)]*)\)/, `(${token})`);
+/** Read the Chromium version out of a Chromium user agent, e.g. "130.0.6723.191". */
+export function chromiumVersionOf(userAgent: string): string {
+  const match = userAgent.match(/Chrome\/([\d.]+)/i);
+  return match?.[1] ?? FALLBACK_CHROMIUM_VERSION;
 }
 
 export function buildUserAgent(options: UserAgentOptions): string {
   const sebToken = `SEB/${SEB_VERSION}`;
 
+  // A configuration can replace the whole agent; the reference honours this too.
   if (options.custom && options.custom.trim().length > 0) {
     return `${options.custom.trim()} ${sebToken}`;
   }
 
-  let base = cleanBaseUserAgent(options.baseUserAgent);
-  if (options.platform !== undefined) {
-    base = withPlatform(base, options.platform);
-  }
+  const platform = PLATFORM_TOKENS[options.platform ?? 'windows'];
+  const chromium = chromiumVersionOf(options.baseUserAgent);
+  const base = `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromium} ${sebToken}`;
 
   const suffix = options.suffix?.trim();
-  return suffix && suffix.length > 0 ? `${base} ${sebToken} ${suffix}` : `${base} ${sebToken}`;
+  return suffix && suffix.length > 0 ? `${base} ${suffix}` : base;
 }
