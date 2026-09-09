@@ -1,7 +1,4 @@
-import { execFile } from 'node:child_process';
-import { join } from 'node:path';
-import { promisify } from 'node:util';
-import { BrowserWindow, ipcMain, shell, WebContentsView, type WebContents } from 'electron';
+import { BrowserWindow, shell } from 'electron';
 import type { AppSettings } from '../core/config/appSettings';
 import { RequestFilter } from '../core/browser/urlFilter';
 import { installKeyboardLockdown } from './lockdown';
@@ -10,14 +7,12 @@ import { logger } from './logger';
 /**
  * The exam window.
  *
- * The window itself renders the taskbar — the strip along the bottom edge that
- * the reference client shows — while the exam page lives in a separate
- * WebContentsView above it. Keeping them apart matters: the exam page cannot
- * paint over the taskbar, restyle it, or reach its controls, and the taskbar
- * survives every navigation the page makes.
+ * The exam page is loaded directly as the window's content, with no chrome of
+ * our own: a self-drawn toolbar is an immediate tell that this is not the
+ * official client, so there is deliberately none. Leaving the session is done
+ * with the emergency exit (Ctrl+Shift+Q), or by closing the window, which runs
+ * the configured quit flow.
  */
-
-const run = promisify(execFile);
 
 export interface KioskWindowOptions {
   settings: AppSettings;
@@ -29,38 +24,10 @@ export interface KioskWindowOptions {
   onNavigate(url: string): void;
   /** Invoked by the emergency exit combination; always ends the session. */
   onEmergencyQuit(): void;
-  /** Invoked by the taskbar's quit button; goes through the normal quit flow. */
-  onQuitRequested(): void;
 }
 
-export interface ExamWindow {
-  window: BrowserWindow;
-  /** The exam page. Load URLs and read state here, not on window.webContents. */
-  contents: WebContents;
-}
-
-/**
- * The current keyboard layout, for the taskbar indicator.
- *
- * There is no portable way to ask for this: setxkbmap speaks to the X server,
- * so it answers under X11 and under XWayland, but not in a native Wayland
- * session. An empty result simply hides the indicator.
- */
-async function detectInputLanguage(): Promise<string> {
-  try {
-    const { stdout } = await run('setxkbmap', ['-query']);
-    const match = stdout.match(/^layout:\s*(\S+)/m);
-    return match?.[1]?.split(',')[0] ?? '';
-  } catch {
-    logger.debug('Could not determine the keyboard layout; hiding the indicator.');
-    return '';
-  }
-}
-
-export function createKioskWindow(options: KioskWindowOptions): ExamWindow {
+export function createKioskWindow(options: KioskWindowOptions): BrowserWindow {
   const { settings, userAgent, filter, kiosk, allowSwitching } = options;
-  const taskbar = settings.taskbar;
-  const barHeight = taskbar.show ? taskbar.height : 0;
 
   const window = new BrowserWindow({
     show: false,
@@ -72,10 +39,11 @@ export function createKioskWindow(options: KioskWindowOptions): ExamWindow {
     backgroundColor: '#1c1f26',
     title: 'Safe Exam Browser for Linux',
     webPreferences: {
-      preload: join(__dirname, '..', 'preload', 'taskbar.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
+      spellcheck: settings.allowSpellCheck,
+      devTools: settings.keyboard.enableDeveloperConsole,
     },
   });
 
@@ -85,48 +53,25 @@ export function createKioskWindow(options: KioskWindowOptions): ExamWindow {
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
 
-  const view = new WebContentsView({
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      spellcheck: settings.allowSpellCheck,
-      devTools: settings.keyboard.enableDeveloperConsole,
-    },
-  });
-  const contents = view.webContents;
-
-  window.contentView.addChildView(view);
-  contents.setUserAgent(userAgent);
-
-  const layoutView = (): void => {
-    // getContentSize returns a tuple, but noUncheckedIndexedAccess widens the
-    // elements to possibly-undefined; fall back rather than assert.
-    const [width = 0, height = 0] = window.getContentSize();
-    view.setBounds({ x: 0, y: 0, width, height: Math.max(0, height - barHeight) });
-  };
-  layoutView();
-  window.on('resize', layoutView);
-  window.on('enter-full-screen', layoutView);
-  window.on('leave-full-screen', layoutView);
-
-  installKeyboardLockdown(contents, keyboardFor(settings, allowSwitching), options.onEmergencyQuit, () =>
-    recoverWindow(window),
+  window.webContents.setUserAgent(userAgent);
+  installKeyboardLockdown(
+    window.webContents,
+    keyboardFor(settings, allowSwitching),
+    options.onEmergencyQuit,
+    () => recoverWindow(window),
   );
-
-  registerTaskbarHandlers(window, contents, settings, options.onQuitRequested);
 
   // Never let the exam session spawn uncontrolled windows or hand URLs to the
   // desktop's default browser.
-  contents.setWindowOpenHandler(({ url }) => {
+  window.webContents.setWindowOpenHandler(({ url }) => {
     logger.debug(`Blocked popup: ${url}`);
     if (filter && filter.process({ url }) === 'allow') {
-      contents.loadURL(url);
+      window.webContents.loadURL(url);
     }
     return { action: 'deny' };
   });
 
-  contents.on('will-navigate', (event, url) => {
+  window.webContents.on('will-navigate', (event, url) => {
     if (filter && filter.process({ url }) === 'block') {
       logger.warn(`Blocked navigation by URL filter: ${url}`);
       event.preventDefault();
@@ -135,16 +80,16 @@ export function createKioskWindow(options: KioskWindowOptions): ExamWindow {
     options.onNavigate(url);
   });
 
-  contents.on('did-navigate', (_event, url) => {
+  window.webContents.on('did-navigate', (_event, url) => {
     options.onNavigate(url);
   });
 
-  contents.on('render-process-gone', (_event, details) => {
+  window.webContents.on('render-process-gone', (_event, details) => {
     logger.error(`Renderer process gone: ${details.reason}`);
   });
 
   // Keep external protocol handlers from escaping the lockdown.
-  contents.on('will-frame-navigate', (event) => {
+  window.webContents.on('will-frame-navigate', (event) => {
     const url = event.url;
     if (!/^(https?|about|data|blob|file):/i.test(url)) {
       logger.warn(`Blocked external protocol navigation: ${url}`);
@@ -160,18 +105,12 @@ export function createKioskWindow(options: KioskWindowOptions): ExamWindow {
   // A failed page load must be visible in the window, not just in a log nobody
   // is reading. `did-fail-load` also fires for aborted sub-frame loads, so only
   // report failures of the main frame.
-  contents.on('did-fail-load', (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
+  window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
     if (!isMainFrame || errorCode === -3 /* ERR_ABORTED, e.g. a redirect */) {
       return;
     }
     logger.error(`Failed to load ${validatedUrl}: ${errorDescription} (${errorCode})`);
-    void showLoadFailure(contents, validatedUrl, errorDescription, errorCode);
-  });
-
-  // Load the taskbar shell before showing anything, so the strip is painted
-  // rather than appearing a moment after the exam page.
-  void window.webContents.loadFile(join(__dirname, '..', 'renderer', 'taskbar.html')).catch((error) => {
-    logger.error('Could not load the taskbar.', error);
+    void showLoadFailure(window, validatedUrl, errorDescription, errorCode);
   });
 
   // Show the window immediately rather than waiting for `ready-to-show`. A slow
@@ -184,7 +123,7 @@ export function createKioskWindow(options: KioskWindowOptions): ExamWindow {
     window.focus();
   });
 
-  return { window, contents };
+  return window;
 }
 
 function keyboardFor(settings: AppSettings, allowSwitching: boolean): AppSettings['keyboard'] {
@@ -196,54 +135,12 @@ function keyboardFor(settings: AppSettings, allowSwitching: boolean): AppSetting
 }
 
 /**
- * Wire the taskbar's controls. The channels are scoped to this window's id so a
- * stale handler from an earlier session cannot drive a new one.
- */
-function registerTaskbarHandlers(
-  window: BrowserWindow,
-  contents: WebContents,
-  settings: AppSettings,
-  onQuitRequested: () => void,
-): void {
-  const taskbar = settings.taskbar;
-
-  ipcMain.handle('taskbar:state', async () => ({
-    show: taskbar.show,
-    showQuit: settings.allowQuit,
-    // A reload button is pointless when the configuration forbids reloading.
-    showReload: taskbar.showReloadButton && settings.window.allowReload,
-    showTime: taskbar.showTime,
-    showInputLanguage: taskbar.showInputLanguage,
-    height: taskbar.height,
-    inputLanguage: taskbar.showInputLanguage ? await detectInputLanguage() : '',
-  }));
-
-  ipcMain.handle('taskbar:quit', () => {
-    onQuitRequested();
-  });
-
-  ipcMain.handle('taskbar:reload', () => {
-    if (!settings.window.allowReload) {
-      logger.warn('Reload requested but disabled by the configuration.');
-      return;
-    }
-    contents.reload();
-  });
-
-  window.on('closed', () => {
-    ipcMain.removeHandler('taskbar:state');
-    ipcMain.removeHandler('taskbar:quit');
-    ipcMain.removeHandler('taskbar:reload');
-  });
-}
-
-/**
- * Render a load failure inside the exam view. Uses a data URL so it works
+ * Render a load failure inside the exam window. Uses a data URL so it works
  * without touching the packaged renderer assets, and escapes every interpolated
  * value so a hostile URL cannot inject markup.
  */
 async function showLoadFailure(
-  contents: WebContents,
+  window: BrowserWindow,
   url: string,
   description: string,
   code: number,
@@ -270,7 +167,7 @@ async function showLoadFailure(
 </div>`;
 
   try {
-    await contents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    await window.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
   } catch (error) {
     logger.error('Could not display the load failure page.', error);
   }
