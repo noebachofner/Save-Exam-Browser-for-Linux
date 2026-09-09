@@ -1,124 +1,58 @@
 # Installation
 
-Nimm das Paket, das zu deiner Distribution passt. Alle drei enthalten dasselbe
-Programm.
+Download the latest build from [Releases](../../releases) and pick the file for
+your system.
 
-| Distribution              | Datei                            |
-| ------------------------- | -------------------------------- |
-| Ubuntu, Zorin OS, Debian  | `seb-linux-<version>-amd64.deb`   |
-| CachyOS, Arch, Manjaro    | `seb-linux-<version>-x64.pacman`  |
-| Alles andere              | `seb-linux-<version>-x86_64.AppImage` |
-
-## Ubuntu / Zorin OS
+## AppImage (any distribution)
 
 ```bash
-sudo dpkg -i seb-linux-*-amd64.deb
-sudo apt-get install -f          # nur falls Abhängigkeiten fehlen
+chmod +x seb-linux-*.AppImage
+./seb-linux-*.AppImage --install    # registers seb:// links and .seb files
 ```
 
-`seb://`-Links und `.seb`-Dateien sind danach registriert.
+If it refuses to start with a FUSE error, install FUSE 2
+(`sudo apt install libfuse2t64`) or run it without installing:
+`./seb-linux-*.AppImage --appimage-extract-and-run`.
 
-## CachyOS / Arch / Manjaro
+## .deb (Debian / Ubuntu-based)
 
 ```bash
-sudo pacman -U seb-linux-*-x64.pacman
+sudo dpkg -i seb-linux-*.deb
+sudo apt-get install -f     # only if dependencies are missing
 ```
 
-## AppImage (alle übrigen Systeme)
+## .pacman (CachyOS / Arch-based)
 
 ```bash
-chmod +x seb-linux-*-x86_64.AppImage
-./seb-linux-*-x86_64.AppImage --install
+sudo pacman -U seb-linux-*.pacman
 ```
 
-`--install` registriert die AppImage-Datei für `seb://`-Links und `.seb`-Dateien
-— nur für deinen Benutzer, ohne root. Verschiebe die Datei vorher an einen festen
-Ort (z. B. `~/Anwendungen/`), denn der Eintrag zeigt auf ihren Pfad. Rückgängig
-mit `--uninstall`.
-
-### Wenn das AppImage nicht startet
-
-```
-AppImages require FUSE to run.
-```
-
-Ubuntu 24.04 und Zorin 17 bringen nur FUSE 3 mit, AppImages brauchen FUSE 2:
+## Usage
 
 ```bash
-sudo apt install libfuse2t64        # ältere Systeme: libfuse2
+seb-linux exam.seb                     # start from a file
+seb-linux "sebs://school.edu/exam"     # start straight from a link
 ```
 
-Ohne Installation geht auch:
+Or click a `seb://` link in your browser — the client opens it directly.
 
-```bash
-./seb-linux-*.AppImage --appimage-extract-and-run
-```
+**Leave an exam anytime with `Ctrl+Shift+Q`.** `Ctrl+Shift+M` releases the
+screen without ending the session.
 
-Auf Ubuntu und Zorin ist das `.deb` der einfachere Weg — es braucht kein FUSE.
+## Encrypted configurations
 
-## Automatische Updates
+If a configuration is password-protected, the client asks for the password on
+start. For Classtime, this is the exam password you enter at the beginning.
 
-Der Client prüft **einmal beim Start**, ob eine neuere Version vorliegt, lädt sie
-im Hintergrund und installiert sie **beim Beenden**. Eine laufende Prüfung wird
-nie unterbrochen. Ist ein Update bereit, steht das in der Toolbar.
+## Automatic updates
 
-| Format   | Automatisches Update                                        |
-| -------- | ----------------------------------------------------------- |
-| AppImage | ja, tauscht sich selbst aus                                  |
-| `.deb`   | ja, fragt beim Beenden nach dem Administrator-Passwort       |
-| `.pacman`| nein — siehe unten                                           |
+The client checks for a new version on start, downloads it in the background, and
+installs it **on quit** — never during an exam.
 
-Abschalten:
+| Format     | Auto-update                                    |
+| ---------- | ---------------------------------------------- |
+| AppImage   | yes, replaces itself                           |
+| `.deb`     | yes, asks for the admin password on quit       |
+| `.pacman`  | no — download the new package and reinstall    |
 
-```bash
-seb-linux config.seb --no-update      # einmalig
-SEB_LINUX_NO_UPDATE=1                 # dauerhaft
-```
-
-### Warum pacman nicht automatisch aktualisiert
-
-electron-builder erzeugt für das pacman-Ziel keine Update-Metadaten. Der Client
-erkennt das und überspringt die Prüfung, statt mit einem irreführenden Fehler
-abzubrechen. Auf CachyOS/Arch lädst du das neue Paket vom Release und
-installierst es wie beim ersten Mal:
-
-```bash
-sudo pacman -U seb-linux-*-x64.pacman
-```
-
-## Benutzung
-
-```bash
-seb-linux ~/Downloads/config.seb        # Prüfung starten
-seb-linux ~/Downloads/config.seb --verify   # nur Config prüfen, kein Fenster
-```
-
-Oder in Moodle auf den `seb://`-Link klicken.
-
-**Raus kommst du immer mit `Strg` + `Shift` + `Q`.**
-`Strg` + `Shift` + `M` gibt den Bildschirm frei, ohne die Prüfung zu beenden.
-
-## Wayland
-
-Unter einer Wayland-Sitzung läuft der Client standardmäßig über **XWayland**, und
-das ist Absicht: Wayland-Compositors lassen Anwendungen in der Regel nicht zu,
-sich dauerhaft über alle anderen Fenster zu legen. Nativ Wayland würde die
-Abschottung also schwächen, die den Kiosk-Modus ausmacht.
-
-Wer natives Wayland braucht (fraktionale Skalierung, HiDPI, Eingabemethoden):
-
-```bash
-seb-linux config.seb --wayland
-```
-
-oder dauerhaft `SEB_LINUX_WAYLAND=1`.
-
-## Selbst bauen
-
-```bash
-npm install
-npm run dist            # AppImage + deb + pacman nach release/
-```
-
-Für das pacman-Paket wird `bsdtar` benötigt (`libarchive-tools` bzw.
-`libarchive`).
+Disable with `--no-update` or `SEB_LINUX_NO_UPDATE=1`.
