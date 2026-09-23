@@ -117,3 +117,13 @@ export function usage(): string {
 export function userArgs(argv: string[], isPackaged: boolean): string[] {
   return argv.slice(isPackaged ? 1 : 2);
 }
+
+/**
+ * The configuration source (a .seb path or a seb://…/sebs://… link) carried by a
+ * raw argv, or undefined when there is none. Used both at start-up and when a
+ * second launch — for instance a clicked link while the client is already
+ * open — hands its arguments to the running instance.
+ */
+export function sourceFromArgv(argv: string[], isPackaged: boolean): string | undefined {
+  return parseArgs(userArgs(argv, isPackaged)).source;
+}

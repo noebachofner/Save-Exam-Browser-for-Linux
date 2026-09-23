@@ -25,7 +25,13 @@ sudo apt-get install -f     # only if dependencies are missing
 
 ```bash
 sudo pacman -U seb-linux-*.pacman
+seb-linux --install     # make clicking seb:// / sebs:// links open this client
 ```
+
+Some desktops don't set a per-user default handler on install, so clicking a
+`sebs://` link does nothing until you run `seb-linux --install` once. If your
+browser is a Flatpak, it can't launch host handlers at all — start the link
+from a terminal (`seb-linux "sebs://…"`) or use a natively installed browser.
 
 ## Usage
 

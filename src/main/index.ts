@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { RequestFilter } from '../core/browser/urlFilter';
 import { buildUserAgent } from '../core/browser/userAgent';
 import { computeBrowserExamKey } from '../core/crypto/browserExamKey';
-import { parseArgs, usage, userArgs } from './cli';
+import { parseArgs, sourceFromArgv, usage, userArgs } from './cli';
 import { SebHeaderInjector } from './headers';
 import { installDesktopEntry, uninstallDesktopEntry } from './desktopIntegration';
 import { createKioskWindow, recoverWindow } from './kioskWindow';
@@ -67,6 +67,18 @@ if (!managementCommand && !app.requestSingleInstanceLock()) {
       'End it with:\n\n    pkill -f seb-linux\n\nthen start the client again.',
   );
   app.exit(1);
+}
+
+// Advertise this build as the handler for seb:// and sebs:// links. The packaged
+// desktop entry already declares these schemes, but registering at runtime also
+// covers an unpackaged/dev launch and desktops that route a clicked link to the
+// already-running instance rather than spawning a fresh process.
+if (!managementCommand) {
+  for (const scheme of ['seb', 'sebs']) {
+    if (!app.isDefaultProtocolClient(scheme)) {
+      app.setAsDefaultProtocolClient(scheme);
+    }
+  }
 }
 
 let mainWindow: BrowserWindow | undefined;
@@ -292,11 +304,26 @@ async function requestQuit(): Promise<void> {
   app.quit();
 }
 
-app.on('second-instance', () => {
-  // Surface whichever window this instance has, so a second launch never looks
-  // like a no-op. The exam window takes precedence when one exists.
+app.on('second-instance', (_event, argv) => {
+  const incoming = sourceFromArgv(argv, app.isPackaged);
+
+  // The client is idle: start-up has finished but no exam is loaded, which is
+  // the "no configuration" / load-failure screen. A clicked seb:// link (or an
+  // opened .seb file) should actually open here instead of being a silent
+  // no-op. Relaunch with it rather than starting a second session in-process,
+  // so no request headers or session state are set up twice.
+  if (incoming && startupFinished && configuration === undefined) {
+    logger.info(`Restarting to open a configuration from a second launch: ${incoming}`);
+    app.relaunch({ args: [incoming] });
+    app.exit(0);
+    return;
+  }
+
+  // Otherwise never let a second launch break into a running exam: only surface
+  // whichever window this instance has, so the click is never a no-op. The exam
+  // window takes precedence when one exists.
   const target = mainWindow ?? BrowserWindow.getAllWindows()[0];
-  if (target) {
+  if (target && !target.isDestroyed()) {
     if (target.isMinimized()) {
       target.restore();
     }
