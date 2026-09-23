@@ -1,11 +1,11 @@
 {
   "name": "seb-linux",
   "productName": "Safe Exam Browser for Linux",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An unofficial, independent Safe Exam Browser client for Linux (Ubuntu/ZorinOS and derivatives).",
   "license": "MIT",
   "author": {
-    "name": "No\u00e9 Bachofner",
+    "name": "Noé Bachofner",
     "email": "noebachofner@lxrin.ch"
   },
   "repository": {
@@ -72,7 +72,7 @@
         "Categories": "Education;",
         "Keywords": "exam;seb;safeexambrowser;"
       },
-      "maintainer": "No\u00e9 Bachofner <noebachofner@lxrin.ch>",
+      "maintainer": "Noé Bachofner <noebachofner@lxrin.ch>",
       "synopsis": "Unofficial SEB-compatible exam browser for Linux",
       "artifactName": "${name}-${version}-${arch}.${ext}",
       "description": "Independent, Safe Exam Browser compatible exam browser for Linux. Reads .seb configurations and seb:// links, computes the SEB Config Key, and sends the SEB integrity headers so exam platforms recognise the session."
