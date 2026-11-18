@@ -19,17 +19,20 @@
  */
 
 /**
- * SEB version presented in the token. Matches a real Windows SEB release rather
- * than an internal version, so it is indistinguishable from the reference.
+ * SEB version presented in the token. Matches the current Windows SEB release
+ * (3.10.3, which ships Chromium 152.0.7977.x) rather than an internal version,
+ * so it is indistinguishable from the reference and does not read as outdated to
+ * an exam server that checks the SEB version.
  */
-export const SEB_VERSION = '3.9.0';
+export const SEB_VERSION = '3.10.3';
 
 /**
  * Chromium version used when it cannot be read from the engine. Kept in step
- * with the bundled Electron's Chromium so the value stays internally consistent
- * with the engine actually rendering the page.
+ * with the bundled Electron's Chromium (Electron 44 → 152.0.7977.169) so the
+ * value stays internally consistent with the engine actually rendering the page,
+ * and on the same Chromium branch (152.0.7977) as the matching SEB release.
  */
-const FALLBACK_CHROMIUM_VERSION = '130.0.6723.191';
+const FALLBACK_CHROMIUM_VERSION = '152.0.7977.169';
 
 /** Platform token presented in the user agent. */
 export type UserAgentPlatform = 'windows' | 'linux';
@@ -54,7 +57,7 @@ export interface UserAgentOptions {
   custom?: string;
 }
 
-/** Read the Chromium version out of a Chromium user agent, e.g. "130.0.6723.191". */
+/** Read the Chromium version out of a Chromium user agent, e.g. "152.0.7977.169". */
 export function chromiumVersionOf(userAgent: string): string {
   const match = userAgent.match(/Chrome\/([\d.]+)/i);
   return match?.[1] ?? FALLBACK_CHROMIUM_VERSION;

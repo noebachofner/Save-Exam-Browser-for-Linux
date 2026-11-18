@@ -1,7 +1,7 @@
 {
   "name": "seb-linux",
   "productName": "Safe Exam Browser for Linux",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "An unofficial, independent Safe Exam Browser client for Linux (Ubuntu/ZorinOS and derivatives).",
   "license": "MIT",
   "author": {
@@ -36,18 +36,18 @@
     "dist:pacman": "npm run build && electron-builder --linux pacman --publish never"
   },
   "devDependencies": {
-    "@eslint/js": "^9.17.0",
-    "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^8.18.1",
-    "@typescript-eslint/parser": "^8.18.1",
-    "@vitest/coverage-v8": "^2.1.8",
-    "electron": "^33.3.1",
-    "electron-builder": "^25.1.8",
-    "eslint": "^9.17.0",
-    "prettier": "^3.4.2",
-    "rimraf": "^6.0.1",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "@typescript-eslint/eslint-plugin": "^8.73.0",
+    "@typescript-eslint/parser": "^8.73.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "electron": "^44.11.4",
+    "electron-builder": "^26.18.0",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "rimraf": "^6.1.4",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.1"
   },
   "build": {
     "appId": "ch.lxrin.seblinux",
@@ -67,10 +67,12 @@
         "pacman"
       ],
       "desktop": {
-        "Name": "Safe Exam Browser for Linux",
-        "MimeType": "x-scheme-handler/seb;x-scheme-handler/sebs;application/x-seb;",
-        "Categories": "Education;",
-        "Keywords": "exam;seb;safeexambrowser;"
+        "entry": {
+          "Name": "Safe Exam Browser for Linux",
+          "MimeType": "x-scheme-handler/seb;x-scheme-handler/sebs;application/x-seb;",
+          "Categories": "Education;",
+          "Keywords": "exam;seb;safeexambrowser;"
+        }
       },
       "maintainer": "Noé Bachofner <noebachofner@lxrin.ch>",
       "synopsis": "Unofficial SEB-compatible exam browser for Linux",
@@ -101,7 +103,7 @@
     }
   },
   "dependencies": {
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.11"
   },
   "homepage": "https://github.com/noebachofner/Save-Exam-Browser-for-Linux"
 }

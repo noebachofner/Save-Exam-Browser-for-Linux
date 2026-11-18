@@ -7,6 +7,7 @@ import {
   type SebConfig,
 } from '../core/config/sebConfig';
 import { isSebLink, resolveSebUrl, resolveSebUrlInsecureFallback, SebUrlError } from '../core/net/sebUrl';
+import { SEB_VERSION } from '../core/browser/userAgent';
 import { askForConfigPassword } from './configPasswordPrompt';
 import { downloadWithSignIn } from './configDownload';
 import { logger } from './logger';
@@ -19,7 +20,7 @@ export interface LoadedConfiguration {
 }
 
 /** Bootstrap user agent used only for downloading the configuration itself. */
-const BOOTSTRAP_USER_AGENT = 'SEB/3.9.0 seb-linux';
+const BOOTSTRAP_USER_AGENT = `SEB/${SEB_VERSION} seb-linux`;
 
 async function fetchConfig(link: string): Promise<Buffer> {
   const primary = resolveSebUrl(link);

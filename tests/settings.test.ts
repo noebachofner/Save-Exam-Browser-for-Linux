@@ -64,13 +64,13 @@ describe('user agent', () => {
   // A stock Electron agent, including the app name Electron injects, which must
   // not leak into the result.
   const chrome =
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) SafeExamBrowserforLinux/0.6.2 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36';
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) SafeExamBrowserforLinux/1.2.0 Chrome/152.0.7977.169 Electron/44.11.4 Safari/537.36';
 
   it('matches the Windows client byte for byte by default', () => {
     // Exactly the reference format: Windows NT 10.0 with no Win64/x64, the
     // engine's Chromium version, the SEB token, and nothing else.
     expect(buildUserAgent({ baseUserAgent: chrome })).toBe(
-      `Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.191 SEB/${SEB_VERSION}`,
+      `Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.7977.169 SEB/${SEB_VERSION}`,
     );
   });
 
@@ -82,7 +82,7 @@ describe('user agent', () => {
   });
 
   it('reads the Chromium version from the engine', () => {
-    expect(chromiumVersionOf(chrome)).toBe('130.0.6723.191');
+    expect(chromiumVersionOf(chrome)).toBe('152.0.7977.169');
   });
 
   it('appends a configured suffix after the SEB token', () => {
